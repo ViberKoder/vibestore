@@ -19,7 +19,10 @@ export function readDeveloperId(cookieHeader: string | null): string | null {
   return /^dev_[A-Za-z0-9_-]{10,}$/.test(value) ? value : null;
 }
 
-export function developerCookieHeader(devId: string): string {
+export function developerCookieHeader(
+  devId: string,
+  reqHost?: string | null,
+): string {
   const parts = [
     `${DEV_COOKIE}=${encodeURIComponent(devId)}`,
     "Path=/",
@@ -27,8 +30,18 @@ export function developerCookieHeader(devId: string): string {
     "SameSite=Lax",
     `Max-Age=${DEV_TTL_SEC}`,
   ];
-  if (process.env.NODE_ENV === "production") parts.push("Secure");
+  // trycloudflare.com is a public suffix — Domain= cannot span subdomains.
+  // Still mark Secure on https tunnel hosts.
+  const host = (reqHost ?? "").split(":")[0].toLowerCase();
+  const https =
+    host.endsWith(".trycloudflare.com") ||
+    process.env.NODE_ENV === "production";
+  if (https) parts.push("Secure");
   return parts.join("; ");
+}
+
+export function requestHost(req: Request): string | null {
+  return req.headers.get("x-forwarded-host") ?? req.headers.get("host");
 }
 
 export function isAppOwner(
@@ -39,14 +52,27 @@ export function isAppOwner(
   return Boolean(devId && app.ownerId && devId === app.ownerId);
 }
 
+export function normalizeDevName(name: string): string {
+  return name.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+export function developerNameMatches(
+  app: Pick<StoreApp, "developerName">,
+  input: string,
+): boolean {
+  const expect = normalizeDevName(app.developerName ?? "");
+  const got = normalizeDevName(input);
+  return Boolean(expect && got && expect === got);
+}
+
 export type PublicStoreApp = Omit<
   StoreApp,
   "ownerKeyHash" | "filePath" | "ownerId"
 > & {
-  /** Whether this app already has a bound uploader */
   hasOwner: boolean;
-  /** True only when computed for the current browser cookie */
   isOwner?: boolean;
+  /** Non-owners can restore by typing the developer name */
+  canRestore?: boolean;
 };
 
 /** Safe app payload — no disk paths / internal owner id. */
@@ -54,6 +80,7 @@ export function toPublicApp(
   app: StoreApp,
   opts?: { isOwner?: boolean },
 ): PublicStoreApp {
+  const isOwner = Boolean(opts?.isOwner);
   return {
     id: app.id,
     slug: app.slug,
@@ -82,6 +109,7 @@ export function toPublicApp(
     scan: app.scan,
     scanProgress: app.scanProgress,
     hasOwner: Boolean(app.ownerId),
-    isOwner: opts?.isOwner,
+    isOwner,
+    canRestore: Boolean(app.ownerId) && !isOwner,
   };
 }

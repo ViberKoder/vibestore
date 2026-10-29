@@ -10,6 +10,7 @@ import {
   developerCookieHeader,
   mintDeveloperId,
   readDeveloperId,
+  requestHost,
   toPublicApp,
 } from "@/lib/owner-auth";
 import { listApps, mediaDirFor, uploadPathFor, upsertApp } from "@/lib/store";
@@ -255,7 +256,6 @@ export async function POST(req: Request) {
   }
 
   let ownerId = readDeveloperId(req.headers.get("cookie"));
-  const mintCookie = !ownerId;
   if (!ownerId) ownerId = mintDeveloperId();
 
   const now = new Date().toISOString();
@@ -295,8 +295,11 @@ export async function POST(req: Request) {
     app: toPublicApp(app, { isOwner: true }),
     scanRequired: true,
   });
-  if (mintCookie) {
-    res.headers.append("Set-Cookie", developerCookieHeader(ownerId));
-  }
+  // Refresh cookie on the current host (trycloudflare is origin-bound;
+  // Secure must be set for https tunnels).
+  res.headers.append(
+    "Set-Cookie",
+    developerCookieHeader(ownerId, requestHost(req)),
+  );
   return res;
 }

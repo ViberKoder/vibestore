@@ -32,7 +32,8 @@ export default async function EditAppPage({
           Управление
         </h1>
         <p className="mt-2 text-[14px] text-ink-2">
-          Доступно только с браузера, с которого загрузили приложение.
+          Привязано к браузеру. Если cookie слетел после смены адреса туннеля —
+          восстановите доступ по имени разработчика с карточки.
         </p>
         <div className="mt-8 surface-card px-5 py-6 md:px-7 md:py-7">
           <OwnerGate appId={app.id} appName={app.name}>

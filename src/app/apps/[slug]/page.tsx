@@ -19,7 +19,7 @@ export default async function AppPage({
 
   const cookie = (await headers()).get("cookie");
   const owner = isAppOwner(app, cookie);
-  const canClaim = !app.ownerId;
+  const publicApp = toPublicApp(app, { isOwner: owner });
 
   const forceScanning = sp.scanning === "1";
   const related = (await listApps({ status: "published" }))
@@ -39,10 +39,14 @@ export default async function AppPage({
 
         <div className="mt-5">
           <AppDetail
-            app={toPublicApp(app, { isOwner: owner })}
+            app={publicApp}
             related={related}
             forceScanning={forceScanning}
-            showManage={owner || canClaim}
+            showManage={
+              Boolean(publicApp.isOwner) ||
+              !publicApp.hasOwner ||
+              Boolean(publicApp.canRestore)
+            }
           />
         </div>
       </div>

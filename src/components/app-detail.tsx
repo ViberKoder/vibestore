@@ -97,7 +97,11 @@ export function AppDetail({
                 href={`/apps/${app.slug}/edit`}
                 className="btn-secondary !h-10 !px-5 !text-[14px]"
               >
-                {app.isOwner ? "Управление" : "Это моё?"}
+                {app.isOwner
+                  ? "Управление"
+                  : app.canRestore
+                    ? "Восстановить"
+                    : "Это моё?"}
               </Link>
             )}
             <span className="ml-1 text-[12px] tabular-nums text-ink-3">
