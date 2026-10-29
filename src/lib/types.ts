@@ -44,6 +44,8 @@ export interface ThreatFinding {
   meaning?: string;
   /** Concrete next step for the developer */
   action?: string;
+  /** Ready-to-paste prompt for an AI coding agent */
+  agentPrompt?: string;
   category:
     | "virus"
     | "trojan"
@@ -57,6 +59,21 @@ export interface ThreatFinding {
     | "performance"
     | "integrity"
     | "other";
+}
+
+export interface AppFeature {
+  title: string;
+  detail?: string;
+}
+
+export interface AppScreenshot {
+  id: string;
+  fileName: string;
+  /** Public path served by /api/media/... */
+  url: string;
+  caption?: string;
+  width?: number;
+  height?: number;
 }
 
 export interface EngineResult {
@@ -130,6 +147,10 @@ export interface StoreApp {
   version: string;
   homepage?: string;
   tags: string[];
+  /** Product capabilities shown on the store page */
+  features: AppFeature[];
+  /** UI / product screenshots */
+  screenshots: AppScreenshot[];
   status: AppStatus;
   createdAt: string;
   updatedAt: string;
@@ -159,7 +180,13 @@ export interface PublishInput {
   version: string;
   homepage?: string;
   tags: string[];
+  features?: AppFeature[];
 }
+
+/** Soft ceiling for product screenshots at publish time. */
+export const MAX_SCREENSHOTS = 8;
+export const MAX_SCREENSHOT_BYTES = 8 * 1024 * 1024;
+export const MAX_FEATURES = 12;
 
 export const SCAN_ENGINE_ORDER: Array<{
   scanner: ScannerId;

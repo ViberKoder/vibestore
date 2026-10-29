@@ -10,6 +10,7 @@ import type {
   ThreatFinding,
 } from "@/lib/types";
 import { PILLAR_META } from "@/lib/types";
+import { buildAgentPrompt } from "@/lib/scanners/agent-prompt";
 import { ScoreRing } from "./safety-badge";
 
 const verdictCopy: Record<
@@ -19,12 +20,12 @@ const verdictCopy: Record<
   clean: {
     label: "Чисто",
     className: "text-green-ink",
-    blurb: "Движок не нашёл известных угроз.",
+    blurb: "Угроз не найдено.",
   },
   suspicious: {
     label: "Подозрительно",
     className: "text-amber-ink",
-    blurb: "Есть признаки риска, но это ещё не подтверждённый malware.",
+    blurb: "Есть признаки риска.",
   },
   malicious: {
     label: "Угроза",
@@ -32,14 +33,14 @@ const verdictCopy: Record<
     blurb: "Движок считает файл вредоносным.",
   },
   error: {
-    label: "Не завершено / ошибка",
+    label: "Не завершено",
     className: "text-amber-ink",
-    blurb: "Проверка не закончилась или сбой API — это не равно «вирус».",
+    blurb: "Сбой / таймаут — это не malware.",
   },
   skipped: {
     label: "Пропуск",
     className: "text-ink-3",
-    blurb: "Движок не применим к этому типу файла.",
+    blurb: "Не применимо к типу файла.",
   },
 };
 
@@ -49,21 +50,6 @@ const severityRu: Record<string, string> = {
   medium: "Средний",
   low: "Низкий",
   info: "Инфо",
-};
-
-const categoryRu: Record<string, string> = {
-  virus: "Вирус",
-  trojan: "Троян",
-  stealer: "Стиллер",
-  adware: "Adware",
-  vulnerability: "Уязвимость",
-  bug: "Баг",
-  packed: "Упаковка",
-  network: "Сеть",
-  policy: "Политика / процесс",
-  performance: "Производительность",
-  integrity: "Целостность",
-  other: "Прочее",
 };
 
 function pillarTone(score: number): string {
@@ -81,12 +67,24 @@ function pillarBar(score: number): string {
 export function ScanReportView({
   report,
   appId,
+  appName,
+  appKind,
+  appVersion,
+  appTagline,
+  fileName,
+  compact = false,
 }: {
   report: ScanReport;
   appId?: string;
+  appName?: string;
+  appKind?: string;
+  appVersion?: string;
+  appTagline?: string;
+  fileName?: string;
+  compact?: boolean;
 }) {
   const findings = report.engines.flatMap((e) =>
-    e.findings.map((f) => ({ ...f, engine: e.displayName, engineResult: e })),
+    e.findings.map((f) => ({ ...f, engine: e.displayName })),
   );
   const vt = report.engines.find((e) => e.scanner === "virustotal");
   const vtPending = vt?.meta?.mode === "pending-analysis";
@@ -94,188 +92,160 @@ export function ScanReportView({
     typeof vt?.meta?.permalink === "string" ? vt.meta.permalink : undefined;
   const trust = report.trustScore ?? report.securityScore;
   const pillars = report.pillars;
+  const appCtx = {
+    name: appName ?? "app",
+    kind: (appKind as "desktop") ?? "other",
+    fileName: fileName ?? "artifact",
+    version: appVersion ?? "0.0.0",
+    tagline: appTagline ?? "",
+  };
 
   return (
-    <div className="space-y-8">
-      <div className="flex flex-col gap-6 sm:flex-row sm:items-center">
-        <ScoreRing score={trust} />
+    <div className={compact ? "space-y-5" : "space-y-6"}>
+      <div className="flex items-center gap-4">
+        <ScoreRing score={trust} size={compact ? 72 : 88} />
         <div className="min-w-0 flex-1">
-          <p className="text-[12px] font-semibold uppercase tracking-[0.14em] text-ink-3">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-3">
             Vibe Audit
           </p>
-          <h2 className="mt-1 text-[24px] font-bold tracking-[-0.03em] text-ink md:text-[28px]">
+          <h2 className="mt-0.5 text-[18px] font-bold tracking-[-0.03em] text-ink md:text-[20px]">
             {report.readinessLabel}
           </h2>
-          <p className="mt-2 text-[14px] leading-relaxed text-ink-2">
+          <p className="mt-1 text-[13px] leading-snug text-ink-2">
             {report.readinessHint}
           </p>
         </div>
       </div>
 
-      {pillars && <PillarGrid pillars={pillars} />}
+      {pillars && <PillarStrip pillars={pillars} />}
 
       {vtPending && (
-        <div className="rounded-2xl border border-amber/30 bg-amber-soft px-4 py-4">
-          <p className="text-[14px] font-semibold text-amber-ink">
-            VirusTotal не «зафейлил» файл как вирус
+        <div className="rounded-xl border border-amber/30 bg-amber-soft px-3.5 py-3">
+          <p className="text-[13px] font-semibold text-amber-ink">
+            VirusTotal ещё анализирует файл
           </p>
-          <p className="mt-1 text-[13px] leading-relaxed text-ink-2">
-            Крупный .exe был загружен в VirusTotal, но вендоры не успели вернуть
-            вердикты за время ожидания. Это таймаут анализа, а не детект
-            malware. Подождите 1–3 минуты и перепроверьте.
+          <p className="mt-1 text-[12px] leading-relaxed text-ink-2">
+            Это таймаут, не детект malware. Подождите и перепроверьте.
           </p>
-          <div className="mt-3 flex flex-wrap gap-2">
+          <div className="mt-2.5 flex flex-wrap gap-2">
             {appId && <RescanButton appId={appId} engine="virustotal" />}
             {vtPermalink && (
               <a
                 href={vtPermalink}
                 target="_blank"
                 rel="noreferrer"
-                className="btn-secondary !h-9 !px-4 !text-[13px]"
+                className="btn-secondary !h-8 !px-3 !text-[12px]"
               >
-                Открыть на VirusTotal
+                VirusTotal →
               </a>
             )}
           </div>
         </div>
       )}
 
-      <div className="grid grid-cols-3 gap-2.5">
-        <Metric label="Находки" value={report.threatCount} />
-        <Metric label="Critical" value={report.criticalCount} tone="danger" />
-        <Metric label="High" value={report.highCount} tone="warn" />
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[12px] text-ink-3">
+        <span>
+          Находки{" "}
+          <strong className="tabular-nums text-ink">{report.threatCount}</strong>
+        </span>
+        <span>
+          Critical{" "}
+          <strong className="tabular-nums text-red-ink">
+            {report.criticalCount}
+          </strong>
+        </span>
+        <span>
+          High{" "}
+          <strong className="tabular-nums text-amber-ink">
+            {report.highCount}
+          </strong>
+        </span>
+        {appId && (
+          <RescanButton appId={appId} engine="all" label="Скан заново" />
+        )}
       </div>
 
-      <p className="rounded-2xl bg-bg px-4 py-3.5 text-[13px] leading-relaxed text-ink-2">
-        {report.consensus}
-      </p>
-
-      <div>
-        <div className="mb-3 flex items-center justify-between gap-3">
-          <h3 className="text-[15px] font-semibold tracking-[-0.02em]">
-            Что сказал каждый движок
-          </h3>
-          {appId && (
-            <RescanButton appId={appId} engine="all" label="Скан заново" />
-          )}
-        </div>
-        <div className="space-y-2">
-          {report.engines.map((e) => (
-            <EngineCard key={e.scanner} engine={e} />
-          ))}
-        </div>
-      </div>
-
-      <div>
-        <h3 className="text-[15px] font-semibold tracking-[-0.02em]">
-          Разбор находок — что это и что делать
+      <section>
+        <h3 className="text-[14px] font-semibold tracking-[-0.02em]">
+          Находки и промпт для AI
         </h3>
         {findings.length === 0 ? (
-          <p className="mt-3 rounded-2xl bg-green-soft px-4 py-3 text-[13px] text-green-ink">
-            Критичных находок нет. Все применимые движки отработали без malware
-            alerts.
+          <p className="mt-2 rounded-xl bg-green-soft px-3.5 py-2.5 text-[13px] text-green-ink">
+            Критичных находок нет.
           </p>
         ) : (
-          <ul className="mt-3 space-y-3">
+          <ul className="mt-2 space-y-2">
             {findings.map((f) => (
-              <FindingCard key={f.id} finding={f} />
+              <FindingCard key={f.id} finding={f} appCtx={appCtx} />
             ))}
           </ul>
         )}
-      </div>
+      </section>
+
+      <details className="group rounded-xl border border-black/[0.06]">
+        <summary className="cursor-pointer list-none px-3.5 py-3 text-[13px] font-semibold tracking-[-0.01em] marker:content-none [&::-webkit-details-marker]:hidden">
+          <span className="flex items-center justify-between gap-2">
+            Движки ({report.engines.length})
+            <span className="text-[12px] font-medium text-ink-3 group-open:hidden">
+              развернуть
+            </span>
+            <span className="hidden text-[12px] font-medium text-ink-3 group-open:inline">
+              свернуть
+            </span>
+          </span>
+        </summary>
+        <div className="space-y-1.5 border-t border-black/[0.06] px-2 py-2">
+          {report.engines.map((e) => (
+            <EngineRow key={e.scanner} engine={e} />
+          ))}
+        </div>
+      </details>
     </div>
   );
 }
 
-function PillarGrid({ pillars }: { pillars: AuditPillars }) {
+function PillarStrip({ pillars }: { pillars: AuditPillars }) {
   return (
-    <div>
-      <h3 className="mb-3 text-[15px] font-semibold tracking-[-0.02em]">
-        Пять осей аудита
-      </h3>
-      <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-5">
-        {PILLAR_META.map((meta) => {
-          const score = pillars[meta.key];
-          return (
-            <div
-              key={meta.key}
-              className="rounded-2xl border border-black/[0.06] px-3.5 py-3.5"
+    <div className="grid grid-cols-5 gap-1.5">
+      {PILLAR_META.map((meta) => {
+        const score = pillars[meta.key];
+        return (
+          <div
+            key={meta.key}
+            className="rounded-xl bg-bg px-1.5 py-2 text-center"
+            title={meta.subtitle}
+          >
+            <p className="text-[10px] font-semibold uppercase tracking-[0.04em] text-ink-3">
+              {meta.title}
+            </p>
+            <p
+              className={`mt-0.5 text-[15px] font-bold tabular-nums tracking-[-0.03em] ${pillarTone(score)}`}
             >
-              <div className="flex items-baseline justify-between gap-2">
-                <p className="text-[13px] font-semibold tracking-[-0.01em]">
-                  {meta.title}
-                </p>
-                <p
-                  className={`text-[18px] font-bold tabular-nums tracking-[-0.03em] ${pillarTone(score)}`}
-                >
-                  {score}
-                </p>
-              </div>
-              <p className="mt-1 text-[11px] leading-snug text-ink-3">
-                {meta.subtitle}
-              </p>
-              <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-black/[0.06]">
-                <div
-                  className={`h-full rounded-full transition-[width] duration-500 ${pillarBar(score)}`}
-                  style={{ width: `${Math.max(4, Math.min(100, score))}%` }}
-                />
-              </div>
+              {score}
+            </p>
+            <div className="mx-auto mt-1.5 h-1 w-full max-w-[48px] overflow-hidden rounded-full bg-black/[0.06]">
+              <div
+                className={`h-full rounded-full ${pillarBar(score)}`}
+                style={{ width: `${Math.max(4, Math.min(100, score))}%` }}
+              />
             </div>
-          );
-        })}
-      </div>
+          </div>
+        );
+      })}
     </div>
   );
 }
 
-function EngineCard({ engine }: { engine: EngineResult }) {
+function EngineRow({ engine }: { engine: EngineResult }) {
   const v = verdictCopy[engine.verdict];
-  const permalink =
-    typeof engine.meta?.permalink === "string"
-      ? engine.meta.permalink
-      : undefined;
-  const mode =
-    typeof engine.meta?.mode === "string" ? engine.meta.mode : undefined;
-
   return (
-    <div className="rounded-2xl border border-black/[0.06] px-4 py-3.5">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="text-[14px] font-semibold tracking-[-0.01em]">
-            {engine.displayName}
-          </div>
-          <div className="mt-0.5 text-[12px] text-ink-2">{engine.summary}</div>
-          <div className="mt-1 text-[12px] text-ink-3">{v.blurb}</div>
-          {mode && (
-            <div className="mt-1 font-mono text-[11px] text-ink-3">
-              mode: {mode}
-              {typeof engine.meta?.sha256 === "string"
-                ? ` · sha256 ${String(engine.meta.sha256).slice(0, 12)}…`
-                : ""}
-            </div>
-          )}
-          {permalink && (
-            <a
-              href={permalink}
-              target="_blank"
-              rel="noreferrer"
-              className="mt-1 inline-block text-[12px] font-medium text-blue hover:underline"
-            >
-              Открыть отчёт движка →
-            </a>
-          )}
-        </div>
-        <div className="shrink-0 text-right">
-          <div className={`text-[12px] font-semibold ${v.className}`}>
-            {v.label}
-          </div>
-          <div className="mt-0.5 text-[12px] tabular-nums text-ink-3">
-            score {engine.score}
-          </div>
-          <div className="mt-0.5 text-[11px] text-ink-3">
-            {(engine.durationMs / 1000).toFixed(1)}s
-          </div>
-        </div>
+    <div className="flex items-start justify-between gap-3 rounded-lg px-2 py-2 hover:bg-bg">
+      <div className="min-w-0">
+        <div className="text-[13px] font-medium">{engine.displayName}</div>
+        <div className="truncate text-[11px] text-ink-3">{engine.summary}</div>
+      </div>
+      <div className={`shrink-0 text-[11px] font-semibold ${v.className}`}>
+        {v.label} · {engine.score}
       </div>
     </div>
   );
@@ -283,52 +253,95 @@ function EngineCard({ engine }: { engine: EngineResult }) {
 
 function FindingCard({
   finding,
+  appCtx,
 }: {
   finding: ThreatFinding & { engine: string };
+  appCtx: {
+    name: string;
+    kind: string;
+    fileName: string;
+    version: string;
+    tagline: string;
+  };
 }) {
+  const [open, setOpen] = useState(
+    finding.severity === "critical" || finding.severity === "high",
+  );
+  const [copied, setCopied] = useState(false);
+  const prompt =
+    finding.agentPrompt ??
+    buildAgentPrompt(finding, appCtx);
+
+  async function copyPrompt() {
+    try {
+      await navigator.clipboard.writeText(prompt);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    } catch {
+      setCopied(false);
+    }
+  }
+
   return (
-    <li className="rounded-2xl border border-black/[0.06] px-4 py-4">
-      <div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.06em]">
-        <span
-          className={
-            finding.severity === "critical" || finding.severity === "high"
-              ? "text-red-ink"
-              : finding.severity === "medium"
-                ? "text-amber-ink"
-                : "text-ink-3"
-          }
-        >
-          {severityRu[finding.severity] ?? finding.severity}
-        </span>
-        <span className="text-ink-3">{finding.engine}</span>
-        <span className="text-ink-3">
-          · {categoryRu[finding.category] ?? finding.category}
-        </span>
-      </div>
-      <p className="mt-2 text-[15px] font-semibold tracking-[-0.01em]">
-        {finding.title}
-      </p>
-      <p className="mt-1 text-[13px] leading-relaxed text-ink-2">
-        {finding.detail}
-      </p>
-      {finding.meaning && (
-        <div className="mt-3 rounded-xl bg-bg px-3 py-2.5">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-3">
-            Что это значит
-          </p>
-          <p className="mt-1 text-[13px] leading-relaxed text-ink">
-            {finding.meaning}
+    <li className="rounded-xl border border-black/[0.06]">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-start justify-between gap-3 px-3.5 py-3 text-left"
+      >
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.06em]">
+            <span
+              className={
+                finding.severity === "critical" || finding.severity === "high"
+                  ? "text-red-ink"
+                  : finding.severity === "medium"
+                    ? "text-amber-ink"
+                    : "text-ink-3"
+              }
+            >
+              {severityRu[finding.severity] ?? finding.severity}
+            </span>
+            <span className="normal-case tracking-normal text-ink-3">
+              {finding.engine}
+            </span>
+          </div>
+          <p className="mt-1 text-[14px] font-semibold tracking-[-0.01em]">
+            {finding.title}
           </p>
         </div>
-      )}
-      {finding.action && (
-        <div className="mt-2 rounded-xl bg-blue-soft px-3 py-2.5">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-blue">
-            Что делать
+        <span className="mt-1 shrink-0 text-[11px] text-ink-3">
+          {open ? "−" : "+"}
+        </span>
+      </button>
+      {open && (
+        <div className="space-y-3 border-t border-black/[0.06] px-3.5 py-3">
+          <p className="text-[13px] leading-relaxed text-ink-2">
+            {finding.detail}
           </p>
-          <p className="mt-1 text-[13px] leading-relaxed text-ink">
-            {finding.action}
-          </p>
+          {finding.action && (
+            <p className="text-[13px] leading-relaxed text-ink">
+              <span className="font-semibold text-blue">Что делать: </span>
+              {finding.action}
+            </p>
+          )}
+          <div className="rounded-xl bg-bg px-3 py-2.5">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-3">
+                Промпт для AI-агента
+              </p>
+              <button
+                type="button"
+                onClick={copyPrompt}
+                className="btn-get !h-7 !min-w-0 !px-3 !text-[11px]"
+              >
+                {copied ? "Скопировано" : "Копировать"}
+              </button>
+            </div>
+            <pre className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap font-mono text-[11px] leading-relaxed text-ink-2">
+              {prompt}
+            </pre>
+          </div>
         </div>
       )}
     </li>
@@ -371,48 +384,19 @@ function RescanButton({
   }
 
   return (
-    <div className="shrink-0">
+    <span className="inline-flex flex-col items-end">
       <button
         type="button"
         onClick={run}
         disabled={busy}
-        className="btn-get !h-9"
+        className="btn-get !h-8 !min-w-0 !px-3 !text-[12px]"
       >
         {busy
-          ? "Проверяем…"
+          ? "…"
           : label ??
-            (engine === "virustotal"
-              ? "Перепроверить VirusTotal"
-              : "Скан заново")}
+            (engine === "virustotal" ? "Перепроверить VT" : "Скан заново")}
       </button>
-      {err && <p className="mt-1 text-[11px] text-red-ink">{err}</p>}
-    </div>
-  );
-}
-
-function Metric({
-  label,
-  value,
-  tone,
-}: {
-  label: string;
-  value: number;
-  tone?: "danger" | "warn";
-}) {
-  return (
-    <div className="rounded-2xl bg-bg px-3 py-3 text-center">
-      <div
-        className={`text-[22px] font-bold tabular-nums tracking-[-0.03em] ${
-          tone === "danger"
-            ? "text-red-ink"
-            : tone === "warn"
-              ? "text-amber-ink"
-              : "text-ink"
-        }`}
-      >
-        {value}
-      </div>
-      <div className="mt-0.5 text-[11px] font-medium text-ink-3">{label}</div>
-    </div>
+      {err && <span className="mt-0.5 text-[10px] text-red-ink">{err}</span>}
+    </span>
   );
 }

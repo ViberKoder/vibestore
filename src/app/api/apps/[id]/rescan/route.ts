@@ -67,6 +67,13 @@ export async function POST(
     const scan = await finalizeReport(
       engines,
       app.scan.startedAt ?? new Date().toISOString(),
+      {
+        name: app.name,
+        kind: app.kind,
+        fileName: app.fileName,
+        version: app.version,
+        tagline: app.tagline,
+      },
     );
     // Preserve scan id across VT-only refresh
     scan.id = app.scan.id;
@@ -103,6 +110,10 @@ export async function POST(
     filePath: app.filePath,
     buffer,
     fileName: app.fileName,
+    appName: app.name,
+    appKind: app.kind,
+    appVersion: app.version,
+    appTagline: app.tagline,
     onProgress: async (progress) => {
       await updateScanProgress(app.id, progress);
     },

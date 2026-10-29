@@ -1,13 +1,22 @@
 import { promises as fs } from "fs";
 import path from "path";
 import { connection } from "next/server";
-import { DB_PATH, DATA_DIR, UPLOADS_DIR } from "./paths";
+import { DB_PATH, DATA_DIR, MEDIA_DIR, UPLOADS_DIR } from "./paths";
 import type { ScanProgress, StoreApp, StoreDatabase } from "./types";
 import { seedApps } from "./seed";
 
 async function ensureDirs() {
   await fs.mkdir(DATA_DIR, { recursive: true });
   await fs.mkdir(UPLOADS_DIR, { recursive: true });
+  await fs.mkdir(MEDIA_DIR, { recursive: true });
+}
+
+function normalizeApp(app: StoreApp): StoreApp {
+  return {
+    ...app,
+    features: Array.isArray(app.features) ? app.features : [],
+    screenshots: Array.isArray(app.screenshots) ? app.screenshots : [],
+  };
 }
 
 async function readDb(): Promise<StoreDatabase> {
@@ -33,7 +42,7 @@ export async function listApps(opts?: {
   q?: string;
 }): Promise<StoreApp[]> {
   const db = await readDb();
-  let apps = [...db.apps].sort(
+  let apps = db.apps.map(normalizeApp).sort(
     (a, b) => +new Date(b.updatedAt) - +new Date(a.updatedAt),
   );
 
@@ -58,12 +67,14 @@ export async function listApps(opts?: {
 
 export async function getAppBySlug(slug: string): Promise<StoreApp | null> {
   const db = await readDb();
-  return db.apps.find((a) => a.slug === slug) ?? null;
+  const app = db.apps.find((a) => a.slug === slug);
+  return app ? normalizeApp(app) : null;
 }
 
 export async function getAppById(id: string): Promise<StoreApp | null> {
   const db = await readDb();
-  return db.apps.find((a) => a.id === id) ?? null;
+  const app = db.apps.find((a) => a.id === id);
+  return app ? normalizeApp(app) : null;
 }
 
 export async function upsertApp(app: StoreApp): Promise<StoreApp> {
@@ -111,4 +122,12 @@ export function uploadPathFor(fileName: string): string {
   return path.join(UPLOADS_DIR, fileName);
 }
 
-export { UPLOADS_DIR };
+export function mediaDirFor(appId: string): string {
+  return path.join(MEDIA_DIR, appId);
+}
+
+export function mediaPathFor(appId: string, fileName: string): string {
+  return path.join(MEDIA_DIR, appId, fileName);
+}
+
+export { UPLOADS_DIR, MEDIA_DIR };

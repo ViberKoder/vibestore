@@ -121,6 +121,45 @@ export function PublishForm() {
       />
 
       <label className="block space-y-2">
+        <span className="text-[13px] font-semibold text-ink">
+          Возможности (по строке)
+        </span>
+        <textarea
+          name="features"
+          rows={4}
+          disabled={busy}
+          className="field-input min-h-[96px] resize-y font-mono text-[13px]"
+          placeholder={
+            "Быстрый поиск | Находит файлы за миллисекунды\nОфлайн-режим\nТёмная тема | Автопереключение"
+          }
+        />
+        <p className="text-[12px] text-ink-3">
+          Формат: <code className="text-[11px]">Заголовок | детали</code> или
+          просто заголовок. До 12 пунктов.
+        </p>
+      </label>
+
+      <label className="block space-y-2">
+        <span className="text-[13px] font-semibold text-ink">
+          Скриншоты интерфейса
+        </span>
+        <div className="rounded-2xl border border-dashed border-black/15 bg-bg px-4 py-5">
+          <input
+            type="file"
+            name="screenshots"
+            accept="image/png,image/jpeg,image/webp,image/gif"
+            multiple
+            disabled={busy}
+            className="block w-full text-[13px] text-ink-2 file:mr-3 file:rounded-full file:border-0 file:bg-blue-soft file:px-4 file:py-2 file:text-[13px] file:font-semibold file:text-blue"
+          />
+          <p className="mt-2 text-[12px] text-ink-3">
+            До 8 изображений · PNG/JPEG/WebP · до 8 МБ каждое. Показываются в
+            карточке приложения.
+          </p>
+        </div>
+      </label>
+
+      <label className="block space-y-2">
         <span className="text-[13px] font-semibold text-ink">Файл сборки</span>
         <div className="rounded-2xl border border-dashed border-black/15 bg-bg px-4 py-6">
           <input

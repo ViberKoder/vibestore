@@ -46,13 +46,35 @@ export function AppScanGate({
           autoStart
           onFinished={onFinished}
         />
-        {app.scan && <ScanReportView report={app.scan} appId={app.id} />}
+        {app.scan && (
+          <ScanReportView
+            report={app.scan}
+            appId={app.id}
+            appName={app.name}
+            appKind={app.kind}
+            appVersion={app.version}
+            appTagline={app.tagline}
+            fileName={app.fileName}
+            compact
+          />
+        )}
       </div>
     );
   }
 
   if (app.scan) {
-    return <ScanReportView report={app.scan} appId={app.id} />;
+    return (
+      <ScanReportView
+        report={app.scan}
+        appId={app.id}
+        appName={app.name}
+        appKind={app.kind}
+        appVersion={app.version}
+        appTagline={app.tagline}
+        fileName={app.fileName}
+        compact
+      />
+    );
   }
 
   return (

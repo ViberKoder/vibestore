@@ -23,6 +23,7 @@ import {
   runVibeGuard,
   runWebStatic,
 } from "./custom";
+import { enrichFindingsWithPrompts } from "./agent-prompt";
 import { computeAuditPillars, trustFromPillars } from "./pillars";
 import { runVirusTotal } from "./virustotal";
 
@@ -109,6 +110,10 @@ export async function runScanPipeline(opts: {
   filePath: string;
   buffer: Buffer;
   fileName: string;
+  appName?: string;
+  appKind?: string;
+  appVersion?: string;
+  appTagline?: string;
   onProgress?: (progress: ScanProgress) => void | Promise<void>;
 }): Promise<ScanReport> {
   const startedAt = new Date().toISOString();
@@ -169,29 +174,67 @@ export async function runScanPipeline(opts: {
     );
   }
 
-  return finalizeReport(results, startedAt, async (label) => {
-    await opts.onProgress?.({
-      ...buildProgress(track),
-      phase: "done",
-      label,
-      percent: 100,
-    });
-  });
+  return finalizeReport(
+    results,
+    startedAt,
+    {
+      name: opts.appName ?? opts.fileName,
+      kind: (opts.appKind as "desktop") ?? "other",
+      fileName: opts.fileName,
+      version: opts.appVersion ?? "0.0.0",
+      tagline: opts.appTagline ?? "",
+    },
+    async (label) => {
+      await opts.onProgress?.({
+        ...buildProgress(track),
+        phase: "done",
+        label,
+        percent: 100,
+      });
+    },
+  );
 }
 
 export async function finalizeReport(
   results: EngineResult[],
   startedAt: string,
+  appCtx?: {
+    name: string;
+    kind: string;
+    fileName: string;
+    version: string;
+    tagline: string;
+  },
   onDone?: (label: string) => void | Promise<void>,
 ): Promise<ScanReport> {
-  const findings = results.flatMap((e) => e.findings);
-  const avHardFail = results.filter(
+  const ctx = appCtx ?? {
+    name: "app",
+    kind: "other",
+    fileName: "artifact",
+    version: "0.0.0",
+    tagline: "",
+  };
+
+  // Attach AI-agent fix prompts onto each finding (and mirror into engine lists)
+  const resultsWithPrompts: EngineResult[] = results.map((engine) => ({
+    ...engine,
+    findings: enrichFindingsWithPrompts(engine.findings, {
+      name: ctx.name,
+      kind: ctx.kind as "desktop",
+      fileName: ctx.fileName,
+      version: ctx.version,
+      tagline: ctx.tagline,
+    }),
+  }));
+
+  let findings = resultsWithPrompts.flatMap((e) => e.findings);
+  const avHardFail = resultsWithPrompts.filter(
     (e) =>
       ["clamav", "clamwin", "virustotal"].includes(e.scanner) &&
       e.verdict === "error" &&
       e.meta?.mode !== "pending-analysis",
   );
-  const vtPending = results.some(
+  const vtPending = resultsWithPrompts.some(
     (e) => e.scanner === "virustotal" && e.meta?.mode === "pending-analysis",
   );
   for (const e of avHardFail) {
@@ -199,8 +242,15 @@ export async function finalizeReport(
       ...e.findings.filter((f) => !findings.some((x) => x.id === f.id)),
     );
   }
+  findings = enrichFindingsWithPrompts(findings, {
+    name: ctx.name,
+    kind: ctx.kind as "desktop",
+    fileName: ctx.fileName,
+    version: ctx.version,
+    tagline: ctx.tagline,
+  });
 
-  const pillars = computeAuditPillars(results);
+  const pillars = computeAuditPillars(resultsWithPrompts);
   let trustScore = trustFromPillars(pillars, findings);
   if (avHardFail.length) trustScore = Math.min(trustScore, 55);
   else if (vtPending) trustScore = Math.min(trustScore, 68);
@@ -221,7 +271,7 @@ export async function finalizeReport(
     id: `scan_${Date.now().toString(36)}`,
     startedAt,
     finishedAt,
-    engines: results,
+    engines: resultsWithPrompts,
     securityScore: trustScore,
     trustScore,
     pillars,

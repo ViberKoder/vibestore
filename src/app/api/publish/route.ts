@@ -4,11 +4,20 @@ import path from "path";
 import { Readable } from "stream";
 import { pipeline } from "stream/promises";
 import { NextResponse } from "next/server";
-import { createHash } from "crypto";
+import { createHash, randomBytes } from "crypto";
 import { initialScanProgress } from "@/lib/scanners/pipeline";
-import { listApps, uploadPathFor, upsertApp } from "@/lib/store";
+import { listApps, mediaDirFor, uploadPathFor, upsertApp } from "@/lib/store";
 import { uniqueSlug } from "@/lib/slug";
-import { MAX_UPLOAD_BYTES, type AppKind, type StoreApp } from "@/lib/types";
+import {
+  MAX_FEATURES,
+  MAX_SCREENSHOT_BYTES,
+  MAX_SCREENSHOTS,
+  MAX_UPLOAD_BYTES,
+  type AppFeature,
+  type AppKind,
+  type AppScreenshot,
+  type StoreApp,
+} from "@/lib/types";
 
 export const runtime = "nodejs";
 export const maxDuration = 600;
@@ -46,12 +55,16 @@ const ALLOWED_EXT = new Set([
   ".tgz",
 ]);
 
-async function saveUpload(file: File, dest: string): Promise<{ size: number; sha256: string }> {
+const IMAGE_EXT = new Set([".png", ".jpg", ".jpeg", ".webp", ".gif"]);
+
+async function saveUpload(
+  file: File,
+  dest: string,
+): Promise<{ size: number; sha256: string }> {
   await fs.mkdir(path.dirname(dest), { recursive: true });
   const hash = createHash("sha256");
   let size = 0;
 
-  // Web File stream → Node writable (avoids buffering entire 200MB twice when possible)
   const webStream = file.stream();
   const nodeReadable = Readable.fromWeb(
     webStream as import("stream/web").ReadableStream,
@@ -77,6 +90,51 @@ async function saveUpload(file: File, dest: string): Promise<{ size: number; sha
   return { size, sha256: hash.digest("hex") };
 }
 
+function parseFeatures(raw: string): AppFeature[] {
+  // Lines: "Title | optional detail" or plain title
+  return raw
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .slice(0, MAX_FEATURES)
+    .map((line) => {
+      const [title, ...rest] = line.split("|").map((s) => s.trim());
+      return {
+        title: title.slice(0, 80),
+        detail: rest.join(" | ").slice(0, 240) || undefined,
+      };
+    })
+    .filter((f) => f.title.length > 0);
+}
+
+async function saveScreenshots(
+  appId: string,
+  files: File[],
+): Promise<AppScreenshot[]> {
+  const dir = mediaDirFor(appId);
+  await fs.mkdir(dir, { recursive: true });
+  const out: AppScreenshot[] = [];
+
+  for (const file of files.slice(0, MAX_SCREENSHOTS)) {
+    if (file.size <= 0 || file.size > MAX_SCREENSHOT_BYTES) continue;
+    const ext = path.extname(file.name).toLowerCase() || ".png";
+    if (!IMAGE_EXT.has(ext)) continue;
+    const id = `shot_${randomBytes(4).toString("hex")}`;
+    const stored = `${id}${ext}`;
+    const dest = path.join(dir, stored);
+    const buf = Buffer.from(await file.arrayBuffer());
+    if (buf.length > MAX_SCREENSHOT_BYTES) continue;
+    await fs.writeFile(dest, buf);
+    out.push({
+      id,
+      fileName: stored,
+      url: `/api/media/${appId}/${stored}`,
+      caption: file.name.replace(/\.[^.]+$/, "").slice(0, 80) || undefined,
+    });
+  }
+  return out;
+}
+
 export async function POST(req: Request) {
   const form = await req.formData();
   const file = form.get("file");
@@ -99,6 +157,7 @@ export async function POST(req: Request) {
     .map((t) => t.trim())
     .filter(Boolean)
     .slice(0, 12);
+  const features = parseFeatures(String(form.get("features") ?? ""));
 
   if (!name || !tagline || !description || !developerName) {
     return NextResponse.json(
@@ -155,6 +214,16 @@ export async function POST(req: Request) {
     );
   }
 
+  const shotFiles = form
+    .getAll("screenshots")
+    .filter((f): f is File => f instanceof File && f.size > 0);
+  let screenshots: AppScreenshot[] = [];
+  try {
+    screenshots = await saveScreenshots(id, shotFiles);
+  } catch {
+    screenshots = [];
+  }
+
   const now = new Date().toISOString();
   const app: StoreApp = {
     id,
@@ -169,6 +238,8 @@ export async function POST(req: Request) {
     version,
     homepage: homepage || undefined,
     tags,
+    features,
+    screenshots,
     status: "scanning",
     createdAt: now,
     updatedAt: now,
@@ -184,6 +255,5 @@ export async function POST(req: Request) {
 
   await upsertApp(app);
 
-  // Scan runs separately so UI can show live per-engine progress
   return NextResponse.json({ app, scanRequired: true });
 }

@@ -44,3 +44,5 @@ next-env.d.ts
 /data/store.json
 /data/uploads/*
 !/data/uploads/.gitkeep
+/data/media/*
+!/data/media/.gitkeep
