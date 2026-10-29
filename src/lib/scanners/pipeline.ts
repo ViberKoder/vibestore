@@ -8,8 +8,14 @@ import type {
   ThreatFinding,
 } from "../types";
 import { SCAN_ENGINE_ORDER } from "../types";
+import {
+  runDeviceFootprint,
+  runElectronHardening,
+  runIntegrityAuditor,
+  runPrivacyAuditor,
+  runSecretsAuditor,
+} from "./audit";
 import { runClamAv, runClamWin } from "./clamav";
-import { runVirusTotal } from "./virustotal";
 import {
   runEntropyScanner,
   runNetworkSink,
@@ -17,6 +23,8 @@ import {
   runVibeGuard,
   runWebStatic,
 } from "./custom";
+import { computeAuditPillars, trustFromPillars } from "./pillars";
+import { runVirusTotal } from "./virustotal";
 
 function readinessFrom(
   score: number,
@@ -37,48 +45,25 @@ function readinessFrom(
     ready: {
       readinessLabel: "Готово к массовому релизу",
       readinessHint:
-        "Движки согласны: сборка выглядит безопасно. Следите за обновлениями.",
-      consensus: "Чистый консенсус антивирусов и собственных движков.",
+        "Независимый аудит не нашёл блокирующих рисков. Следите за обновлениями runtime и зависимостей.",
+      consensus:
+        "AV-консенсус + hardening/privacy/device — без критичных красных флагов.",
     },
     needs_fixes: {
       readinessLabel: "Нужны правки перед релизом",
       readinessHint:
-        "Исправьте high/medium-находки и просканируйте снова перед публикацией.",
-      consensus: "Смешанные сигналы — пока как пре-релиз, не в прод.",
+        "Исправьте high/medium-находки аудита и пересканируйте перед массовой раздачей.",
+      consensus: "Есть замечания аудитора — пока как пре-релиз, не в прод.",
     },
     blocked: {
       readinessLabel: "Заблокировано — не распространять",
       readinessHint:
-        "Критичные признаки malware/stealer/trojan. Скачивание закрыто.",
-      consensus:
-        "Сильный malicious-консенсус — раздача пользователям запрещена.",
+        "Критичные malware/секреты/дыры. Скачивание для пользователей закрыто.",
+      consensus: "Критичный риск для пользователей — релиз заблокирован.",
     },
   } as const;
 
   return { readiness, ...map[readiness] };
-}
-
-function aggregateScore(engines: EngineResult[]): number {
-  const active = engines.filter((e) => e.verdict !== "skipped");
-  if (!active.length) return 100;
-  const weights: Record<string, number> = {
-    virustotal: 1.4,
-    clamav: 1.2,
-    clamwin: 1.0,
-    vibeguard: 1.5,
-    entropy: 0.7,
-    "pe-inspector": 1.0,
-    "network-sink": 1.1,
-    "web-static": 1.0,
-  };
-  let sum = 0;
-  let w = 0;
-  for (const e of active) {
-    const weight = weights[e.scanner] ?? 1;
-    sum += e.score * weight;
-    w += weight;
-  }
-  return Math.round(sum / w);
 }
 
 export function initialScanProgress(): ScanProgress {
@@ -138,8 +123,9 @@ export async function runScanPipeline(opts: {
     await opts.onProgress(buildProgress(track, current, label));
   };
 
-  await notify(undefined, "Запуск конвейера антивирусов…");
+  await notify(undefined, "Запуск Vibe Audit + антивирусов…");
 
+  // Order MUST match SCAN_ENGINE_ORDER
   const runners: Array<() => Promise<EngineResult>> = [
     () => runClamAv(opts.filePath, opts.buffer, opts.fileName),
     () => runClamWin(opts.filePath, opts.buffer, opts.fileName),
@@ -149,6 +135,11 @@ export async function runScanPipeline(opts: {
     () => runPeInspector(opts.buffer, opts.fileName),
     () => runNetworkSink(opts.buffer),
     () => runWebStatic(opts.buffer, opts.fileName),
+    () => runSecretsAuditor(opts.buffer, opts.fileName),
+    () => runElectronHardening(opts.buffer, opts.fileName),
+    () => runPrivacyAuditor(opts.buffer),
+    () => runIntegrityAuditor(opts.buffer, opts.fileName),
+    () => runDeviceFootprint(opts.buffer, opts.fileName),
   ];
 
   const results: EngineResult[] = [];
@@ -178,6 +169,21 @@ export async function runScanPipeline(opts: {
     );
   }
 
+  return finalizeReport(results, startedAt, async (label) => {
+    await opts.onProgress?.({
+      ...buildProgress(track),
+      phase: "done",
+      label,
+      percent: 100,
+    });
+  });
+}
+
+export async function finalizeReport(
+  results: EngineResult[],
+  startedAt: string,
+  onDone?: (label: string) => void | Promise<void>,
+): Promise<ScanReport> {
   const findings = results.flatMap((e) => e.findings);
   const avHardFail = results.filter(
     (e) =>
@@ -186,8 +192,7 @@ export async function runScanPipeline(opts: {
       e.meta?.mode !== "pending-analysis",
   );
   const vtPending = results.some(
-    (e) =>
-      e.scanner === "virustotal" && e.meta?.mode === "pending-analysis",
+    (e) => e.scanner === "virustotal" && e.meta?.mode === "pending-analysis",
   );
   for (const e of avHardFail) {
     findings.push(
@@ -195,26 +200,31 @@ export async function runScanPipeline(opts: {
     );
   }
 
-  let securityScore = aggregateScore(results);
-  if (avHardFail.length) securityScore = Math.min(securityScore, 55);
-  else if (vtPending) securityScore = Math.min(securityScore, 68);
+  const pillars = computeAuditPillars(results);
+  let trustScore = trustFromPillars(pillars, findings);
+  if (avHardFail.length) trustScore = Math.min(trustScore, 55);
+  else if (vtPending) trustScore = Math.min(trustScore, 68);
 
-  const ready = readinessFrom(securityScore, findings);
+  const ready = readinessFrom(trustScore, findings);
+  if (vtPending && ready.readiness === "needs_fixes") {
+    ready.readinessLabel = "Ждём VirusTotal — повторите проверку";
+    ready.readinessHint =
+      "VirusTotal ещё анализирует файл. Остальной аудит уже посчитан — нажмите «Перепроверить VirusTotal».";
+    ready.consensus =
+      "Локальные AV/аудит готовы; отчёт VirusTotal ещё догоняет.";
+  }
+
   const finishedAt = new Date().toISOString();
-
-  await opts.onProgress?.({
-    ...buildProgress(track),
-    phase: "done",
-    label: ready.readinessLabel,
-    percent: 100,
-  });
+  await onDone?.(ready.readinessLabel);
 
   return {
     id: `scan_${Date.now().toString(36)}`,
     startedAt,
     finishedAt,
     engines: results,
-    securityScore,
+    securityScore: trustScore,
+    trustScore,
+    pillars,
     ...ready,
     threatCount: findings.length,
     criticalCount: findings.filter((f) => f.severity === "critical").length,

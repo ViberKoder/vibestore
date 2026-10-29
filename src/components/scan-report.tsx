@@ -3,11 +3,13 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type {
+  AuditPillars,
   EngineResult,
   ScanReport,
   ScannerVerdict,
   ThreatFinding,
 } from "@/lib/types";
+import { PILLAR_META } from "@/lib/types";
 import { ScoreRing } from "./safety-badge";
 
 const verdictCopy: Record<
@@ -59,8 +61,22 @@ const categoryRu: Record<string, string> = {
   packed: "Упаковка",
   network: "Сеть",
   policy: "Политика / процесс",
+  performance: "Производительность",
+  integrity: "Целостность",
   other: "Прочее",
 };
+
+function pillarTone(score: number): string {
+  if (score >= 75) return "text-green-ink";
+  if (score >= 45) return "text-amber-ink";
+  return "text-red-ink";
+}
+
+function pillarBar(score: number): string {
+  if (score >= 75) return "bg-[var(--green)]";
+  if (score >= 45) return "bg-[var(--amber)]";
+  return "bg-[var(--red)]";
+}
 
 export function ScanReportView({
   report,
@@ -76,14 +92,16 @@ export function ScanReportView({
   const vtPending = vt?.meta?.mode === "pending-analysis";
   const vtPermalink =
     typeof vt?.meta?.permalink === "string" ? vt.meta.permalink : undefined;
+  const trust = report.trustScore ?? report.securityScore;
+  const pillars = report.pillars;
 
   return (
     <div className="space-y-8">
       <div className="flex flex-col gap-6 sm:flex-row sm:items-center">
-        <ScoreRing score={report.securityScore} />
+        <ScoreRing score={trust} />
         <div className="min-w-0 flex-1">
           <p className="text-[12px] font-semibold uppercase tracking-[0.14em] text-ink-3">
-            Отчёт безопасности
+            Vibe Audit
           </p>
           <h2 className="mt-1 text-[24px] font-bold tracking-[-0.03em] text-ink md:text-[28px]">
             {report.readinessLabel}
@@ -93,6 +111,8 @@ export function ScanReportView({
           </p>
         </div>
       </div>
+
+      {pillars && <PillarGrid pillars={pillars} />}
 
       {vtPending && (
         <div className="rounded-2xl border border-amber/30 bg-amber-soft px-4 py-4">
@@ -135,7 +155,9 @@ export function ScanReportView({
           <h3 className="text-[15px] font-semibold tracking-[-0.02em]">
             Что сказал каждый движок
           </h3>
-          {appId && <RescanButton appId={appId} engine="all" label="Скан заново" />}
+          {appId && (
+            <RescanButton appId={appId} engine="all" label="Скан заново" />
+          )}
         </div>
         <div className="space-y-2">
           {report.engines.map((e) => (
@@ -160,6 +182,47 @@ export function ScanReportView({
             ))}
           </ul>
         )}
+      </div>
+    </div>
+  );
+}
+
+function PillarGrid({ pillars }: { pillars: AuditPillars }) {
+  return (
+    <div>
+      <h3 className="mb-3 text-[15px] font-semibold tracking-[-0.02em]">
+        Пять осей аудита
+      </h3>
+      <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-5">
+        {PILLAR_META.map((meta) => {
+          const score = pillars[meta.key];
+          return (
+            <div
+              key={meta.key}
+              className="rounded-2xl border border-black/[0.06] px-3.5 py-3.5"
+            >
+              <div className="flex items-baseline justify-between gap-2">
+                <p className="text-[13px] font-semibold tracking-[-0.01em]">
+                  {meta.title}
+                </p>
+                <p
+                  className={`text-[18px] font-bold tabular-nums tracking-[-0.03em] ${pillarTone(score)}`}
+                >
+                  {score}
+                </p>
+              </div>
+              <p className="mt-1 text-[11px] leading-snug text-ink-3">
+                {meta.subtitle}
+              </p>
+              <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-black/[0.06]">
+                <div
+                  className={`h-full rounded-full transition-[width] duration-500 ${pillarBar(score)}`}
+                  style={{ width: `${Math.max(4, Math.min(100, score))}%` }}
+                />
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -253,7 +316,9 @@ function FindingCard({
           <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-3">
             Что это значит
           </p>
-          <p className="mt-1 text-[13px] leading-relaxed text-ink">{finding.meaning}</p>
+          <p className="mt-1 text-[13px] leading-relaxed text-ink">
+            {finding.meaning}
+          </p>
         </div>
       )}
       {finding.action && (
@@ -261,7 +326,9 @@ function FindingCard({
           <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-blue">
             Что делать
           </p>
-          <p className="mt-1 text-[13px] leading-relaxed text-ink">{finding.action}</p>
+          <p className="mt-1 text-[13px] leading-relaxed text-ink">
+            {finding.action}
+          </p>
         </div>
       )}
     </li>

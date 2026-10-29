@@ -16,7 +16,12 @@ export type ScannerId =
   | "entropy"
   | "pe-inspector"
   | "network-sink"
-  | "web-static";
+  | "web-static"
+  | "secrets"
+  | "electron-hardening"
+  | "privacy"
+  | "device-footprint"
+  | "integrity";
 
 export type ScannerVerdict =
   | "clean"
@@ -49,6 +54,8 @@ export interface ThreatFinding {
     | "packed"
     | "network"
     | "policy"
+    | "performance"
+    | "integrity"
     | "other";
 }
 
@@ -83,12 +90,24 @@ export interface ScanProgress {
   updatedAt: string;
 }
 
+/** Independent auditor axes (Vibe Audit). */
+export interface AuditPillars {
+  safety: number;
+  privacy: number;
+  hardening: number;
+  integrity: number;
+  device: number;
+}
+
 export interface ScanReport {
   id: string;
   startedAt: string;
   finishedAt: string;
   engines: EngineResult[];
+  /** @deprecated prefer pillars + trustScore; kept as overall trust for UI/compat */
   securityScore: number;
+  trustScore?: number;
+  pillars?: AuditPillars;
   readiness: ReleaseReadiness;
   readinessLabel: string;
   readinessHint: string;
@@ -146,6 +165,7 @@ export const SCAN_ENGINE_ORDER: Array<{
   scanner: ScannerId;
   displayName: string;
 }> = [
+  // Existing AV / malware stack (must stay)
   { scanner: "clamav", displayName: "ClamAV" },
   { scanner: "clamwin", displayName: "ClamWin (ClamAV DB)" },
   { scanner: "virustotal", displayName: "VirusTotal" },
@@ -154,6 +174,44 @@ export const SCAN_ENGINE_ORDER: Array<{
   { scanner: "pe-inspector", displayName: "PE Inspector" },
   { scanner: "network-sink", displayName: "Network Sink Scanner" },
   { scanner: "web-static", displayName: "Web Static Auditor" },
+  // Vibe Audit Stage A
+  { scanner: "secrets", displayName: "Secrets Auditor" },
+  { scanner: "electron-hardening", displayName: "Electron Hardening" },
+  { scanner: "privacy", displayName: "Privacy Auditor" },
+  { scanner: "integrity", displayName: "Integrity Auditor" },
+  { scanner: "device-footprint", displayName: "Device Footprint" },
+];
+
+export const PILLAR_META: Array<{
+  key: keyof AuditPillars;
+  title: string;
+  subtitle: string;
+}> = [
+  {
+    key: "safety",
+    title: "Safety",
+    subtitle: "Вирусы, трояны, стиллеры",
+  },
+  {
+    key: "privacy",
+    title: "Privacy",
+    subtitle: "Трекеры и чувствительные API",
+  },
+  {
+    key: "hardening",
+    title: "Hardening",
+    subtitle: "Взлом, секреты, Electron",
+  },
+  {
+    key: "integrity",
+    title: "Integrity",
+    subtitle: "Подпись, подмена, упаковка",
+  },
+  {
+    key: "device",
+    title: "Device",
+    subtitle: "Тормоза, майнинг, автозапуск",
+  },
 ];
 
 /** Soft ceiling for very large builds (e.g. 200MB installers). */
