@@ -107,6 +107,20 @@ function parseFeatures(raw: string): AppFeature[] {
     .filter((f) => f.title.length > 0);
 }
 
+async function saveIcon(appId: string, file: File): Promise<string | null> {
+  if (file.size <= 0 || file.size > MAX_SCREENSHOT_BYTES) return null;
+  const ext = path.extname(file.name).toLowerCase() || ".png";
+  if (!IMAGE_EXT.has(ext)) return null;
+  const dir = mediaDirFor(appId);
+  await fs.mkdir(dir, { recursive: true });
+  const stored = `icon${ext}`;
+  await fs.writeFile(
+    path.join(dir, stored),
+    Buffer.from(await file.arrayBuffer()),
+  );
+  return `/api/media/${appId}/${stored}`;
+}
+
 async function saveScreenshots(
   appId: string,
   files: File[],
@@ -224,6 +238,16 @@ export async function POST(req: Request) {
     screenshots = [];
   }
 
+  let iconUrl: string | undefined;
+  const iconFile = form.get("icon");
+  if (iconFile instanceof File && iconFile.size > 0) {
+    try {
+      iconUrl = (await saveIcon(id, iconFile)) ?? undefined;
+    } catch {
+      iconUrl = undefined;
+    }
+  }
+
   const now = new Date().toISOString();
   const app: StoreApp = {
     id,
@@ -250,6 +274,7 @@ export async function POST(req: Request) {
     sha256,
     downloads: 0,
     iconHue: Math.floor(Math.random() * 360),
+    iconUrl,
     scanProgress: initialScanProgress(),
   };
 

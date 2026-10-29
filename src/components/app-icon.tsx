@@ -12,12 +12,30 @@ export function AppIcon({
   size = "md",
   className = "",
 }: {
-  app: Pick<StoreApp, "name" | "iconHue" | "kind" | "category">;
+  app: Pick<StoreApp, "name" | "iconHue" | "kind" | "category"> & {
+    iconUrl?: string;
+  };
   size?: keyof typeof sizeMap;
   className?: string;
 }) {
   const letter = app.name.trim().slice(0, 1).toUpperCase() || "A";
   const hue = app.iconHue;
+
+  if (app.iconUrl) {
+    return (
+      <div
+        className={`app-icon relative shrink-0 overflow-hidden ${sizeMap[size]} ${className}`}
+        aria-hidden
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={app.iconUrl}
+          alt=""
+          className="h-full w-full object-cover"
+        />
+      </div>
+    );
+  }
 
   return (
     <div

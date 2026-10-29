@@ -2,11 +2,11 @@ import Link from "next/link";
 
 export function SiteFooter() {
   return (
-    <footer className="mt-auto border-t border-black/[0.06] bg-bg">
+    <footer className="mt-auto border-t border-[var(--line)] bg-bg">
       <div className="container-store flex flex-col gap-6 py-12 md:flex-row md:items-start md:justify-between">
         <div className="max-w-sm">
           <div className="flex items-center gap-2">
-            <span className="grid h-6 w-6 place-items-center rounded-[7px] bg-ink text-[11px] font-bold text-white">
+            <span className="grid h-6 w-6 place-items-center rounded-[7px] bg-ink text-[11px] font-bold text-bg">
               V
             </span>
             <span className="text-[15px] font-bold tracking-[-0.02em]">
@@ -41,7 +41,7 @@ export function SiteFooter() {
           </div>
         </div>
       </div>
-      <div className="container-store border-t border-black/[0.06] py-5 text-[12px] text-ink-3">
+      <div className="container-store border-t border-[var(--line)] py-5 text-[12px] text-ink-3">
         © {new Date().getFullYear()} Vibe Store
       </div>
     </footer>

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import type { StoreApp } from "@/lib/types";
 import { formatBytes, formatNumber } from "@/lib/format";
@@ -87,6 +88,12 @@ export function AppDetail({
                 Сайт
               </a>
             )}
+            <Link
+              href={`/apps/${app.slug}/edit`}
+              className="btn-secondary !h-10 !px-5 !text-[14px]"
+            >
+              Изменить
+            </Link>
             <span className="ml-1 text-[12px] tabular-nums text-ink-3">
               v{app.version} · {formatBytes(app.fileSize)} ·{" "}
               {formatNumber(app.downloads)} загрузок
@@ -95,7 +102,7 @@ export function AppDetail({
         </div>
       </section>
 
-      <nav className="fade-up-d1 mt-6 flex gap-1 border-b border-black/[0.08]">
+      <nav className="fade-up-d1 mt-6 flex gap-1 border-b border-[var(--line)]">
         {tabs
           .filter((t) => !t.hidden)
           .map((t) => (
@@ -210,7 +217,7 @@ function OverviewTab({
           </div>
         )}
         {typeof app.scan?.securityScore === "number" && (
-          <p className="border-t border-black/[0.06] pt-3 text-[12px] text-ink-3">
+          <p className="border-t border-[var(--line)] pt-3 text-[12px] text-ink-3">
             Trust score{" "}
             <span className="font-semibold tabular-nums text-ink">
               {app.scan.trustScore ?? app.scan.securityScore}

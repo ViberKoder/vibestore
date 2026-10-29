@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Manrope } from "next/font/google";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
+import { THEME_BOOT_SCRIPT } from "@/components/theme-toggle";
 import "./globals.css";
 
 const manrope = Manrope({
@@ -22,7 +23,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ru" className={`${manrope.variable} h-full antialiased`}>
+    <html
+      lang="ru"
+      className={`${manrope.variable} h-full antialiased`}
+      suppressHydrationWarning
+    >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }} />
+      </head>
       <body className="flex min-h-full flex-col bg-bg font-sans text-ink">
         <SiteHeader />
         {children}

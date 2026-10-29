@@ -161,6 +161,8 @@ export interface StoreApp {
   sha256: string;
   downloads: number;
   iconHue: number;
+  /** Custom app avatar (/api/media/...) */
+  iconUrl?: string;
   scan?: ScanReport;
   scanProgress?: ScanProgress;
 }

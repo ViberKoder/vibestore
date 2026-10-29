@@ -182,7 +182,7 @@ export function ScanReportView({
         )}
       </section>
 
-      <details className="group rounded-xl border border-black/[0.06]">
+      <details className="group rounded-xl border border-[var(--line)]">
         <summary className="cursor-pointer list-none px-3.5 py-3 text-[13px] font-semibold tracking-[-0.01em] marker:content-none [&::-webkit-details-marker]:hidden">
           <span className="flex items-center justify-between gap-2">
             Движки ({report.engines.length})
@@ -194,7 +194,7 @@ export function ScanReportView({
             </span>
           </span>
         </summary>
-        <div className="space-y-1.5 border-t border-black/[0.06] px-2 py-2">
+        <div className="space-y-1.5 border-t border-[var(--line)] px-2 py-2">
           {report.engines.map((e) => (
             <EngineRow key={e.scanner} engine={e} />
           ))}
@@ -283,7 +283,7 @@ function FindingCard({
   }
 
   return (
-    <li className="rounded-xl border border-black/[0.06]">
+    <li className="rounded-xl border border-[var(--line)]">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -315,7 +315,7 @@ function FindingCard({
         </span>
       </button>
       {open && (
-        <div className="space-y-3 border-t border-black/[0.06] px-3.5 py-3">
+        <div className="space-y-3 border-t border-[var(--line)] px-3.5 py-3">
           <p className="text-[13px] leading-relaxed text-ink-2">
             {finding.detail}
           </p>

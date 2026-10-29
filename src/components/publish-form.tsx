@@ -140,10 +140,27 @@ export function PublishForm() {
       </label>
 
       <label className="block space-y-2">
+        <span className="text-[13px] font-semibold text-ink">Аватарка</span>
+        <div className="rounded-2xl border border-dashed border-[var(--line-strong)] bg-bg px-4 py-5">
+          <input
+            type="file"
+            name="icon"
+            accept="image/png,image/jpeg,image/webp,image/gif"
+            disabled={busy}
+            className="block w-full text-[13px] text-ink-2 file:mr-3 file:rounded-full file:border-0 file:bg-blue-soft file:px-4 file:py-2 file:text-[13px] file:font-semibold file:text-blue"
+          />
+          <p className="mt-2 text-[12px] text-ink-3">
+            Квадратное PNG/JPEG/WebP · до 8 МБ. Если не задать — будет буква на
+            градиенте.
+          </p>
+        </div>
+      </label>
+
+      <label className="block space-y-2">
         <span className="text-[13px] font-semibold text-ink">
           Скриншоты интерфейса
         </span>
-        <div className="rounded-2xl border border-dashed border-black/15 bg-bg px-4 py-5">
+        <div className="rounded-2xl border border-dashed border-[var(--line-strong)] bg-bg px-4 py-5">
           <input
             type="file"
             name="screenshots"
@@ -161,7 +178,7 @@ export function PublishForm() {
 
       <label className="block space-y-2">
         <span className="text-[13px] font-semibold text-ink">Файл сборки</span>
-        <div className="rounded-2xl border border-dashed border-black/15 bg-bg px-4 py-6">
+        <div className="rounded-2xl border border-dashed border-[var(--line-strong)] bg-bg px-4 py-6">
           <input
             type="file"
             name="file"

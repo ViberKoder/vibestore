@@ -118,6 +118,22 @@ export async function bumpDownloads(id: string): Promise<void> {
   await writeDb(db);
 }
 
+export async function deleteApp(id: string): Promise<boolean> {
+  const db = await readDb();
+  const idx = db.apps.findIndex((a) => a.id === id);
+  if (idx < 0) return false;
+  const app = db.apps[idx];
+  db.apps.splice(idx, 1);
+  await writeDb(db);
+
+  if (app.filePath) {
+    await fs.unlink(app.filePath).catch(() => undefined);
+  }
+  const mediaDir = mediaDirFor(app.id);
+  await fs.rm(mediaDir, { recursive: true, force: true }).catch(() => undefined);
+  return true;
+}
+
 export function uploadPathFor(fileName: string): string {
   return path.join(UPLOADS_DIR, fileName);
 }
