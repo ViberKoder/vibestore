@@ -46,13 +46,13 @@ export function AppScanGate({
           autoStart
           onFinished={onFinished}
         />
-        {app.scan && <ScanReportView report={app.scan} />}
+        {app.scan && <ScanReportView report={app.scan} appId={app.id} />}
       </div>
     );
   }
 
   if (app.scan) {
-    return <ScanReportView report={app.scan} />;
+    return <ScanReportView report={app.scan} appId={app.id} />;
   }
 
   return (

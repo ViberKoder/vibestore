@@ -179,19 +179,25 @@ export async function runScanPipeline(opts: {
   }
 
   const findings = results.flatMap((e) => e.findings);
-  const avDown = results.filter(
+  const avHardFail = results.filter(
     (e) =>
       ["clamav", "clamwin", "virustotal"].includes(e.scanner) &&
-      e.verdict === "error",
+      e.verdict === "error" &&
+      e.meta?.mode !== "pending-analysis",
   );
-  for (const e of avDown) {
+  const vtPending = results.some(
+    (e) =>
+      e.scanner === "virustotal" && e.meta?.mode === "pending-analysis",
+  );
+  for (const e of avHardFail) {
     findings.push(
       ...e.findings.filter((f) => !findings.some((x) => x.id === f.id)),
     );
   }
 
   let securityScore = aggregateScore(results);
-  if (avDown.length) securityScore = Math.min(securityScore, 55);
+  if (avHardFail.length) securityScore = Math.min(securityScore, 55);
+  else if (vtPending) securityScore = Math.min(securityScore, 68);
 
   const ready = readinessFrom(securityScore, findings);
   const finishedAt = new Date().toISOString();

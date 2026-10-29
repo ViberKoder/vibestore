@@ -35,6 +35,10 @@ export interface ThreatFinding {
   severity: ThreatSeverity;
   title: string;
   detail: string;
+  /** Plain-language explanation for humans */
+  meaning?: string;
+  /** Concrete next step for the developer */
+  action?: string;
   category:
     | "virus"
     | "trojan"
