@@ -13,6 +13,11 @@ import {
   patchApp,
   uploadPathFor,
 } from "@/lib/store";
+import {
+  toPublicApp,
+  verifyOwnerKey,
+  verifyOwnerSession,
+} from "@/lib/owner-auth";
 import { initialScanProgress } from "@/lib/scanners/pipeline";
 import {
   MAX_FEATURES,
@@ -65,6 +70,32 @@ const ALLOWED_BUILD_EXT = new Set([
 
 async function resolveApp(id: string) {
   return (await getAppById(id)) ?? (await getAppBySlug(id));
+}
+
+async function assertOwner(
+  req: Request,
+  app: StoreApp,
+  ownerKeyFromBody?: string | null,
+): Promise<NextResponse | null> {
+  const cookieOk = await verifyOwnerSession(
+    app.id,
+    req.headers.get("cookie"),
+  );
+  if (cookieOk) return null;
+
+  const headerKey =
+    req.headers.get("x-owner-key")?.trim() ||
+    ownerKeyFromBody?.trim() ||
+    "";
+  if (verifyOwnerKey(headerKey, app.ownerKeyHash)) return null;
+
+  return NextResponse.json(
+    {
+      error:
+        "Нужен ключ владельца. Откройте «Управление» и введите ключ, выданный при публикации.",
+    },
+    { status: 401 },
+  );
 }
 
 function parseFeatures(raw: string): AppFeature[] {
@@ -166,7 +197,7 @@ export async function GET(
   if (!app) {
     return NextResponse.json({ error: "App not found" }, { status: 404 });
   }
-  return NextResponse.json({ app });
+  return NextResponse.json({ app: toPublicApp(app) });
 }
 
 export async function PATCH(
@@ -185,6 +216,15 @@ export async function PATCH(
 
   if (contentType.includes("multipart/form-data")) {
     const form = await req.formData();
+
+    const denied = await assertOwner(
+      req,
+      app,
+      typeof form.get("ownerKey") === "string"
+        ? String(form.get("ownerKey"))
+        : null,
+    );
+    if (denied) return denied;
 
     const str = (key: string) => {
       const v = form.get(key);
@@ -302,10 +342,15 @@ export async function PATCH(
       }
     }
   } else {
-    const body = (await req.json().catch(() => null)) as Partial<StoreApp> | null;
+    const body = (await req.json().catch(() => null)) as
+      | (Partial<StoreApp> & { ownerKey?: string })
+      | null;
     if (!body || typeof body !== "object") {
       return NextResponse.json({ error: "Invalid body" }, { status: 400 });
     }
+    const denied = await assertOwner(req, app, body.ownerKey);
+    if (denied) return denied;
+
     const allowed: Array<keyof StoreApp> = [
       "name",
       "tagline",
@@ -333,11 +378,11 @@ export async function PATCH(
     return NextResponse.json({ error: "Update failed" }, { status: 500 });
   }
 
-  return NextResponse.json({ app: updated, rescan });
+  return NextResponse.json({ app: toPublicApp(updated), rescan });
 }
 
 export async function DELETE(
-  _req: Request,
+  req: Request,
   ctx: { params: Promise<{ id: string }> },
 ) {
   const { id } = await ctx.params;
@@ -345,6 +390,18 @@ export async function DELETE(
   if (!app) {
     return NextResponse.json({ error: "App not found" }, { status: 404 });
   }
+
+  let bodyKey: string | null = null;
+  try {
+    const body = (await req.json()) as { ownerKey?: string };
+    bodyKey = body.ownerKey ?? null;
+  } catch {
+    bodyKey = null;
+  }
+
+  const denied = await assertOwner(req, app, bodyKey);
+  if (denied) return denied;
+
   await deleteApp(app.id);
   return NextResponse.json({ ok: true, deleted: app.id });
 }

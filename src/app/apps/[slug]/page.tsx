@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AppDetail } from "@/components/app-detail";
+import { toPublicApp } from "@/lib/owner-auth";
 import { getAppBySlug, listApps } from "@/lib/store";
 
 export default async function AppPage({
@@ -18,7 +19,8 @@ export default async function AppPage({
   const forceScanning = sp.scanning === "1";
   const related = (await listApps({ status: "published" }))
     .filter((a) => a.id !== app.id)
-    .slice(0, 4);
+    .slice(0, 4)
+    .map(toPublicApp);
 
   return (
     <main className="flex-1 pb-16 pt-6 md:pt-8">
@@ -32,7 +34,7 @@ export default async function AppPage({
 
         <div className="mt-5">
           <AppDetail
-            app={app}
+            app={toPublicApp(app)}
             related={related}
             forceScanning={forceScanning}
           />

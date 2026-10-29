@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { PublicStoreApp } from "@/lib/owner-auth";
 import type { StoreApp } from "@/lib/types";
 import { AppIcon } from "./app-icon";
 import { SafetyBadge } from "./safety-badge";
@@ -8,7 +9,7 @@ export function AppRow({
   rank,
   divider = true,
 }: {
-  app: StoreApp;
+  app: StoreApp | PublicStoreApp;
   rank?: number;
   divider?: boolean;
 }) {

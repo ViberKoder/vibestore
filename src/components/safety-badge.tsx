@@ -1,5 +1,8 @@
 import type { CSSProperties } from "react";
+import type { PublicStoreApp } from "@/lib/owner-auth";
 import type { ReleaseReadiness, StoreApp } from "@/lib/types";
+
+type BadgeApp = Pick<StoreApp, "status" | "scan"> | PublicStoreApp;
 
 const labels: Record<
   ReleaseReadiness | "scanning" | "unknown",
@@ -27,7 +30,7 @@ const labels: Record<
   },
 };
 
-export function readinessKey(app: StoreApp) {
+export function readinessKey(app: BadgeApp) {
   if (app.status === "scanning" || app.status === "queued") return "scanning";
   return app.scan?.readiness ?? "unknown";
 }
@@ -36,7 +39,7 @@ export function SafetyBadge({
   app,
   showScore = true,
 }: {
-  app: StoreApp;
+  app: BadgeApp;
   showScore?: boolean;
 }) {
   const key = readinessKey(app);

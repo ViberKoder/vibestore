@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useCallback } from "react";
-import type { StoreApp } from "@/lib/types";
+import type { PublicStoreApp } from "@/lib/owner-auth";
 import { ScanProgressPanel } from "./scan-progress-panel";
 import { ScanReportView } from "./scan-report";
 
@@ -10,7 +10,7 @@ export function AppScanGate({
   app,
   forceScanning,
 }: {
-  app: StoreApp;
+  app: PublicStoreApp;
   forceScanning?: boolean;
 }) {
   const router = useRouter();

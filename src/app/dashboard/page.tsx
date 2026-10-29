@@ -20,8 +20,8 @@ export default async function DashboardPage() {
               Ваши приложения
             </h1>
             <p className="mt-3 max-w-xl text-[16px] text-ink-2">
-              Редактируйте описание, версию и аватарку, заливайте новую сборку
-              или удаляйте приложения.
+              Управление приложением — только с ключом владельца, выданным при
+              публикации.
             </p>
           </div>
           <Link href="/publish" className="btn-primary shrink-0">

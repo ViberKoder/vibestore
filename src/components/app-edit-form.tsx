@@ -2,11 +2,11 @@
 
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
-import type { StoreApp } from "@/lib/types";
+import type { PublicStoreApp } from "@/lib/owner-auth";
 import { formatBytes } from "@/lib/format";
 import { AppIcon } from "./app-icon";
 
-export function AppEditForm({ app }: { app: StoreApp }) {
+export function AppEditForm({ app }: { app: PublicStoreApp }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -39,6 +39,7 @@ export function AppEditForm({ app }: { app: StoreApp }) {
     try {
       const res = await fetch(`/api/apps/${app.id}`, {
         method: "PATCH",
+        credentials: "include",
         body: data,
       });
       const json = (await res.json()) as {
@@ -76,7 +77,12 @@ export function AppEditForm({ app }: { app: StoreApp }) {
     setDeleting(true);
     setError(null);
     try {
-      const res = await fetch(`/api/apps/${app.id}`, { method: "DELETE" });
+      const res = await fetch(`/api/apps/${app.id}`, {
+        method: "DELETE",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: "{}",
+      });
       const json = (await res.json()) as { error?: string };
       if (!res.ok) {
         setError(json.error ?? "Не удалось удалить");

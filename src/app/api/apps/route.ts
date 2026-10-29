@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { toPublicApp } from "@/lib/owner-auth";
 import { listApps } from "@/lib/store";
 
 export async function GET(req: Request) {
@@ -13,5 +14,5 @@ export async function GET(req: Request) {
     | "all";
 
   const apps = await listApps({ q, status });
-  return NextResponse.json({ apps });
+  return NextResponse.json({ apps: apps.map(toPublicApp) });
 }

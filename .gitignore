@@ -46,3 +46,5 @@ next-env.d.ts
 !/data/uploads/.gitkeep
 /data/media/*
 !/data/media/.gitkeep
+/data/owner-secret.txt
+/data/owner-keys.json

@@ -163,6 +163,8 @@ export interface StoreApp {
   iconHue: number;
   /** Custom app avatar (/api/media/...) */
   iconUrl?: string;
+  /** SHA-256 of owner manage key — never expose to clients */
+  ownerKeyHash?: string;
   scan?: ScanReport;
   scanProgress?: ScanProgress;
 }

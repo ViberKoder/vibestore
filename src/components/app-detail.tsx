@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import type { StoreApp } from "@/lib/types";
+import type { PublicStoreApp } from "@/lib/owner-auth";
 import { formatBytes, formatNumber } from "@/lib/format";
 import { AppIcon } from "./app-icon";
 import { AppRow } from "./app-row";
 import { AppScanGate } from "./app-scan-gate";
 import { SafetyBadge } from "./safety-badge";
+import type { StoreApp } from "@/lib/types";
 
 type Tab = "overview" | "gallery" | "audit";
 
@@ -16,8 +17,8 @@ export function AppDetail({
   related,
   forceScanning,
 }: {
-  app: StoreApp;
-  related: StoreApp[];
+  app: PublicStoreApp;
+  related: PublicStoreApp[];
   forceScanning?: boolean;
 }) {
   const features = app.features ?? [];
@@ -92,7 +93,7 @@ export function AppDetail({
               href={`/apps/${app.slug}/edit`}
               className="btn-secondary !h-10 !px-5 !text-[14px]"
             >
-              Изменить
+              Управление
             </Link>
             <span className="ml-1 text-[12px] tabular-nums text-ink-3">
               v{app.version} · {formatBytes(app.fileSize)} ·{" "}
@@ -146,9 +147,9 @@ function OverviewTab({
   features,
   related,
 }: {
-  app: StoreApp;
+  app: PublicStoreApp;
   features: StoreApp["features"];
-  related: StoreApp[];
+  related: PublicStoreApp[];
 }) {
   return (
     <div className="grid gap-8 lg:grid-cols-[1fr_280px]">
@@ -235,8 +236,8 @@ function GalleryTab({
   shots,
   features,
 }: {
-  shots: StoreApp["screenshots"];
-  features: StoreApp["features"];
+  shots: PublicStoreApp["screenshots"];
+  features: PublicStoreApp["features"];
 }) {
   const [active, setActive] = useState(0);
   if (!shots.length && !features.length) {

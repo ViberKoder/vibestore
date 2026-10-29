@@ -6,6 +6,11 @@ import { pipeline } from "stream/promises";
 import { NextResponse } from "next/server";
 import { createHash, randomBytes } from "crypto";
 import { initialScanProgress } from "@/lib/scanners/pipeline";
+import {
+  hashOwnerKey,
+  mintOwnerKey,
+  toPublicApp,
+} from "@/lib/owner-auth";
 import { listApps, mediaDirFor, uploadPathFor, upsertApp } from "@/lib/store";
 import { uniqueSlug } from "@/lib/slug";
 import {
@@ -248,6 +253,7 @@ export async function POST(req: Request) {
     }
   }
 
+  const ownerKey = mintOwnerKey();
   const now = new Date().toISOString();
   const app: StoreApp = {
     id,
@@ -275,10 +281,16 @@ export async function POST(req: Request) {
     downloads: 0,
     iconHue: Math.floor(Math.random() * 360),
     iconUrl,
+    ownerKeyHash: hashOwnerKey(ownerKey),
     scanProgress: initialScanProgress(),
   };
 
   await upsertApp(app);
 
-  return NextResponse.json({ app, scanRequired: true });
+  // ownerKey is returned ONCE — store only the hash afterwards
+  return NextResponse.json({
+    app: toPublicApp(app),
+    ownerKey,
+    scanRequired: true,
+  });
 }
