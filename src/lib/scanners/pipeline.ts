@@ -80,7 +80,7 @@ export async function runScanPipeline(opts: {
 
   const engines = await Promise.all([
     runClamAv(opts.filePath, opts.buffer, opts.fileName),
-    runClamWin(opts.buffer, opts.fileName),
+    runClamWin(opts.filePath, opts.buffer, opts.fileName),
     runVirusTotal(opts.buffer, opts.fileName),
     runVibeGuard(opts.buffer, opts.fileName),
     runEntropyScanner(opts.buffer),
@@ -90,7 +90,22 @@ export async function runScanPipeline(opts: {
   ]);
 
   const findings = engines.flatMap((e) => e.findings);
-  const securityScore = aggregateScore(engines);
+  // Antivirus engines must not be skipped/bypassed: unavailable AV lowers readiness
+  const avDown = engines.filter(
+    (e) =>
+      ["clamav", "clamwin", "virustotal"].includes(e.scanner) &&
+      e.verdict === "error",
+  );
+  for (const e of avDown) {
+    findings.push(
+      ...e.findings.filter((f) => !findings.some((x) => x.id === f.id)),
+    );
+  }
+
+  let securityScore = aggregateScore(engines);
+  if (avDown.length) {
+    securityScore = Math.min(securityScore, 55);
+  }
   const ready = readinessFrom(securityScore, findings);
   const finishedAt = new Date().toISOString();
 

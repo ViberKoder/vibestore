@@ -8,6 +8,7 @@ import { uniqueSlug } from "@/lib/slug";
 import type { AppKind, StoreApp } from "@/lib/types";
 
 export const runtime = "nodejs";
+export const maxDuration = 120;
 
 const ALLOWED_EXT = new Set([
   ".exe",
@@ -33,6 +34,7 @@ const ALLOWED_EXT = new Set([
   ".ps1",
   ".wasm",
   ".bin",
+  ".com",
   ".txt",
   ".md",
   ".json",

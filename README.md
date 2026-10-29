@@ -23,11 +23,18 @@ npm run dev
 
 Откройте [http://localhost:3000](http://localhost:3000).
 
-Опционально:
+## Антивирусы (без обходов)
+
+- **VirusTotal Public API v3** — hash lookup, если файла нет — upload + poll analysis. Нужен `VIRUSTOTAL_API_KEY` (бесплатный community key: https://www.virustotal.com/gui/my-apikey). Без ключа движок возвращает `error`, эмуляция не подменяет результат.
+- **ClamAV** — нативный `clamscan` + базы `/var/lib/clamav`.
+- **ClamWin** — тот же ClamAV signature DB (продукт ClamWin на Windows); на сервере тоже native scan, не фейковый pass.
 
 ```bash
-export VIRUSTOTAL_API_KEY=...
-# и/или установите clamav (clamscan)
+cp .env.example .env.local
+# впишите VIRUSTOTAL_API_KEY=
+
+# публичный туннель для теста
+./scripts/start-public.sh
 ```
 
-Данные хранятся в `data/store.json`, загруженные файлы — в `data/uploads/`.
+Данные: `data/store.json`, загрузки — `data/uploads/`.
