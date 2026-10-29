@@ -7,75 +7,103 @@ const labels: Record<
 > = {
   ready: {
     text: "Проверено",
-    className: "bg-teal/15 text-teal-deep ring-teal/25",
+    className: "bg-green-soft text-green-ink",
   },
   needs_fixes: {
-    text: "На доработке",
-    className: "bg-amber/15 text-amber ring-amber/30",
+    text: "На проверке",
+    className: "bg-amber-soft text-amber-ink",
   },
   blocked: {
     text: "Заблокировано",
-    className: "bg-coral/15 text-coral ring-coral/30",
+    className: "bg-red-soft text-red-ink",
   },
   scanning: {
-    text: "Сканируется",
-    className: "bg-ink/5 text-ink-soft ring-ink/10",
+    text: "Сканирование",
+    className: "bg-black/[0.04] text-ink-2",
   },
   unknown: {
     text: "Без отчёта",
-    className: "bg-ink/5 text-ink-soft ring-ink/10",
+    className: "bg-black/[0.04] text-ink-2",
   },
 };
 
-export function SafetyBadge({ app }: { app: StoreApp }) {
-  const key =
-    app.status === "scanning" || app.status === "queued"
-      ? "scanning"
-      : (app.scan?.readiness ?? "unknown");
+export function readinessKey(app: StoreApp) {
+  if (app.status === "scanning" || app.status === "queued") return "scanning";
+  return app.scan?.readiness ?? "unknown";
+}
+
+export function SafetyBadge({
+  app,
+  showScore = true,
+}: {
+  app: StoreApp;
+  showScore?: boolean;
+}) {
+  const key = readinessKey(app);
   const cfg = labels[key];
   return (
     <span
-      className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-semibold ring-1 ring-inset ${cfg.className}`}
+      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold tracking-[-0.01em] ${cfg.className}`}
     >
       {cfg.text}
-      {typeof app.scan?.securityScore === "number" && (
-        <span className="ml-1.5 font-mono opacity-80">
-          {app.scan.securityScore}
-        </span>
+      {showScore && typeof app.scan?.securityScore === "number" && (
+        <span className="opacity-70">{app.scan.securityScore}</span>
       )}
     </span>
   );
 }
 
-export function ScoreOrb({
+export function ScoreRing({
   score,
-  size = 88,
+  size = 96,
 }: {
   score: number;
   size?: number;
 }) {
   const color =
-    score >= 75 ? "var(--teal)" : score >= 45 ? "var(--amber)" : "var(--coral)";
+    score >= 75 ? "var(--green)" : score >= 45 ? "var(--amber)" : "var(--red)";
+  const r = 42;
+  const c = 2 * Math.PI * r;
+  const offset = c - (score / 100) * c;
+
   return (
     <div
-      className="score-ring relative grid place-items-center rounded-full p-[5px]"
-      style={
-        {
-          width: size,
-          height: size,
-          "--score": score,
-          "--ring-color": color,
-        } as CSSProperties
-      }
+      className="relative grid place-items-center"
+      style={{ width: size, height: size }}
     >
-      <div className="grid h-full w-full place-items-center rounded-full bg-paper-2">
-        <div className="text-center">
-          <div className="font-display text-2xl font-bold leading-none text-ink">
-            {score}
-          </div>
-          <div className="mt-0.5 text-[10px] uppercase tracking-wider text-ink-soft">
-            score
-          </div>
+      <svg
+        viewBox="0 0 100 100"
+        className="absolute inset-0 -rotate-90"
+        aria-hidden
+      >
+        <circle
+          cx="50"
+          cy="50"
+          r={r}
+          fill="none"
+          stroke="rgba(0,0,0,0.06)"
+          strokeWidth="7"
+        />
+        <circle
+          cx="50"
+          cy="50"
+          r={r}
+          fill="none"
+          stroke={color}
+          strokeWidth="7"
+          strokeLinecap="round"
+          strokeDasharray={c}
+          strokeDashoffset={offset}
+          className="score-animate"
+          style={{ "--tw": offset } as CSSProperties}
+        />
+      </svg>
+      <div className="text-center">
+        <div className="text-[28px] font-bold leading-none tracking-[-0.04em] text-ink">
+          {score}
+        </div>
+        <div className="mt-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-ink-3">
+          score
         </div>
       </div>
     </div>

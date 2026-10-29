@@ -26,22 +26,22 @@ function readinessFrom(
 
   const map = {
     ready: {
-      readinessLabel: "Ready for mass release",
+      readinessLabel: "Готово к массовому релизу",
       readinessHint:
-        "Engines agree the build looks safe. Keep monitoring updates.",
-      consensus: "Clean consensus across antivirus and proprietary engines.",
+        "Движки согласны: сборка выглядит безопасно. Следите за обновлениями.",
+      consensus: "Чистый консенсус антивирусов и собственных движков.",
     },
     needs_fixes: {
-      readinessLabel: "Needs fixes before launch",
+      readinessLabel: "Нужны правки перед релизом",
       readinessHint:
-        "Ship only after resolving high/medium findings and re-scanning.",
-      consensus: "Mixed signals — treat as pre-release, not production.",
+        "Исправьте high/medium-находки и просканируйте снова перед публикацией.",
+      consensus: "Смешанные сигналы — пока как пре-релиз, не в прод.",
     },
     blocked: {
-      readinessLabel: "Blocked — do not distribute",
+      readinessLabel: "Заблокировано — не распространять",
       readinessHint:
-        "Critical malware/stealer/trojan indicators. Quarantined from the store.",
-      consensus: "Strong malicious consensus — download disabled for users.",
+        "Критичные признаки malware/stealer/trojan. Скачивание закрыто.",
+      consensus: "Сильный malicious-консенсус — раздача пользователям запрещена.",
     },
   } as const;
 

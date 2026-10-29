@@ -1,136 +1,145 @@
 import type { ScanReport, ScannerVerdict } from "@/lib/types";
-import { ScoreOrb } from "./safety-badge";
+import { ScoreRing } from "./safety-badge";
 
-const verdictStyle: Record<ScannerVerdict, string> = {
-  clean: "text-teal-deep",
-  suspicious: "text-amber",
-  malicious: "text-coral",
-  error: "text-coral",
-  skipped: "text-ink-soft",
-};
+const verdictCopy: Record<ScannerVerdict, { label: string; className: string }> =
+  {
+    clean: { label: "Чисто", className: "text-green-ink" },
+    suspicious: { label: "Подозрительно", className: "text-amber-ink" },
+    malicious: { label: "Угроза", className: "text-red-ink" },
+    error: { label: "Ошибка", className: "text-red-ink" },
+    skipped: { label: "Пропуск", className: "text-ink-3" },
+  };
 
 export function ScanReportView({ report }: { report: ScanReport }) {
+  const findings = report.engines.flatMap((e) =>
+    e.findings.map((f) => ({ ...f, engine: e.displayName })),
+  );
+
   return (
-    <section className="space-y-8">
-      <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
-        <div className="flex items-center gap-5">
-          <ScoreOrb score={report.securityScore} />
-          <div>
-            <p className="text-sm uppercase tracking-[0.16em] text-ink-soft">
-              Отчёт безопасности
-            </p>
-            <h2 className="font-display text-2xl font-bold text-ink md:text-3xl">
-              {report.readinessLabel}
-            </h2>
-            <p className="mt-1 max-w-xl text-sm text-ink-soft">
-              {report.readinessHint}
-            </p>
-          </div>
-        </div>
-        <div className="grid grid-cols-3 gap-3 text-center font-mono text-xs">
-          <Stat label="threats" value={report.threatCount} />
-          <Stat label="critical" value={report.criticalCount} danger />
-          <Stat label="high" value={report.highCount} warn />
+    <div className="space-y-8">
+      <div className="flex flex-col gap-6 sm:flex-row sm:items-center">
+        <ScoreRing score={report.securityScore} />
+        <div className="min-w-0 flex-1">
+          <p className="text-[12px] font-semibold uppercase tracking-[0.14em] text-ink-3">
+            Отчёт безопасности
+          </p>
+          <h2 className="mt-1 text-[24px] font-bold tracking-[-0.03em] text-ink md:text-[28px]">
+            {report.readinessLabel}
+          </h2>
+          <p className="mt-2 text-[14px] leading-relaxed text-ink-2">
+            {report.readinessHint}
+          </p>
         </div>
       </div>
 
-      <p className="rounded-xl bg-white/55 px-4 py-3 text-sm text-ink-soft ring-1 ring-ink/8">
+      <div className="grid grid-cols-3 gap-2.5">
+        <Metric label="Угрозы" value={report.threatCount} />
+        <Metric label="Critical" value={report.criticalCount} tone="danger" />
+        <Metric label="High" value={report.highCount} tone="warn" />
+      </div>
+
+      <p className="rounded-2xl bg-bg px-4 py-3.5 text-[13px] leading-relaxed text-ink-2">
         {report.consensus}
       </p>
 
-      <div className="overflow-hidden rounded-2xl bg-white/60 ring-1 ring-ink/8">
-        <table className="w-full text-left text-sm">
-          <thead className="border-b border-ink/10 text-xs uppercase tracking-wider text-ink-soft">
-            <tr>
-              <th className="px-4 py-3 font-medium">Движок</th>
-              <th className="px-4 py-3 font-medium">Вердикт</th>
-              <th className="px-4 py-3 font-medium">Score</th>
-              <th className="hidden px-4 py-3 font-medium md:table-cell">
-                Итог
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {report.engines.map((e) => (
-              <tr key={e.scanner} className="border-b border-ink/5 last:border-0">
-                <td className="px-4 py-3 font-medium text-ink">
-                  {e.displayName}
-                </td>
-                <td
-                  className={`px-4 py-3 font-mono text-xs uppercase ${verdictStyle[e.verdict]}`}
-                >
-                  {e.verdict}
-                </td>
-                <td className="px-4 py-3 font-mono">{e.score}</td>
-                <td className="hidden px-4 py-3 text-ink-soft md:table-cell">
-                  {e.summary}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <div>
+        <h3 className="text-[15px] font-semibold tracking-[-0.02em]">
+          Движки
+        </h3>
+        <div className="mt-3 overflow-hidden rounded-2xl border border-black/[0.06]">
+          {report.engines.map((e, i) => {
+            const v = verdictCopy[e.verdict];
+            return (
+              <div
+                key={e.scanner}
+                className={`flex items-start justify-between gap-4 px-4 py-3.5 ${
+                  i < report.engines.length - 1
+                    ? "border-b border-black/[0.06]"
+                    : ""
+                }`}
+              >
+                <div className="min-w-0">
+                  <div className="text-[14px] font-semibold tracking-[-0.01em]">
+                    {e.displayName}
+                  </div>
+                  <div className="mt-0.5 text-[12px] text-ink-2">{e.summary}</div>
+                </div>
+                <div className="shrink-0 text-right">
+                  <div className={`text-[12px] font-semibold ${v.className}`}>
+                    {v.label}
+                  </div>
+                  <div className="mt-0.5 text-[12px] tabular-nums text-ink-3">
+                    {e.score}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </div>
 
-      {report.engines.some((e) => e.findings.length > 0) && (
-        <div className="space-y-3">
-          <h3 className="font-display text-lg font-semibold">Находки</h3>
-          <ul className="space-y-2">
-            {report.engines.flatMap((e) =>
-              e.findings.map((f) => (
-                <li
-                  key={f.id}
-                  className="rounded-xl bg-white/55 px-4 py-3 ring-1 ring-ink/8"
-                >
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span
-                      className={`font-mono text-[11px] uppercase ${
-                        f.severity === "critical" || f.severity === "high"
-                          ? "text-coral"
-                          : f.severity === "medium"
-                            ? "text-amber"
-                            : "text-ink-soft"
-                      }`}
-                    >
-                      {f.severity}
-                    </span>
-                    <span className="text-xs text-ink-soft">{e.displayName}</span>
-                    <span className="text-xs text-ink-soft">· {f.category}</span>
-                  </div>
-                  <p className="mt-1 font-medium text-ink">{f.title}</p>
-                  <p className="mt-0.5 text-sm text-ink-soft">{f.detail}</p>
-                </li>
-              )),
-            )}
+      {findings.length > 0 && (
+        <div>
+          <h3 className="text-[15px] font-semibold tracking-[-0.02em]">
+            Находки
+          </h3>
+          <ul className="mt-3 space-y-2">
+            {findings.map((f) => (
+              <li
+                key={f.id}
+                className="rounded-2xl border border-black/[0.06] px-4 py-3.5"
+              >
+                <div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.06em]">
+                  <SeverityDot severity={f.severity} />
+                  <span className="text-ink-3">{f.engine}</span>
+                  <span className="text-ink-3">· {f.category}</span>
+                </div>
+                <p className="mt-1.5 text-[14px] font-semibold tracking-[-0.01em]">
+                  {f.title}
+                </p>
+                <p className="mt-0.5 text-[13px] text-ink-2">{f.detail}</p>
+              </li>
+            ))}
           </ul>
         </div>
       )}
-    </section>
+    </div>
   );
 }
 
-function Stat({
+function Metric({
   label,
   value,
-  danger,
-  warn,
+  tone,
 }: {
   label: string;
   value: number;
-  danger?: boolean;
-  warn?: boolean;
+  tone?: "danger" | "warn";
 }) {
   return (
-    <div className="rounded-xl bg-white/55 px-3 py-3 ring-1 ring-ink/8">
+    <div className="rounded-2xl bg-bg px-3 py-3 text-center">
       <div
-        className={`text-xl font-semibold ${
-          danger ? "text-coral" : warn ? "text-amber" : "text-ink"
+        className={`text-[22px] font-bold tabular-nums tracking-[-0.03em] ${
+          tone === "danger"
+            ? "text-red-ink"
+            : tone === "warn"
+              ? "text-amber-ink"
+              : "text-ink"
         }`}
       >
         {value}
       </div>
-      <div className="text-[10px] uppercase tracking-wider text-ink-soft">
-        {label}
-      </div>
+      <div className="mt-0.5 text-[11px] font-medium text-ink-3">{label}</div>
     </div>
   );
+}
+
+function SeverityDot({ severity }: { severity: string }) {
+  const color =
+    severity === "critical" || severity === "high"
+      ? "text-red-ink"
+      : severity === "medium"
+        ? "text-amber-ink"
+        : "text-ink-3";
+  return <span className={color}>{severity}</span>;
 }

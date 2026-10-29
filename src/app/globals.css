@@ -1,36 +1,59 @@
 @import "tailwindcss";
 
 :root {
-  --ink: #10241f;
-  --ink-soft: #3a524b;
-  --paper: #eef5f1;
-  --paper-2: #f7f3ea;
-  --mist: #d5e8e0;
-  --teal: #0d7a63;
-  --teal-deep: #095544;
-  --teal-bright: #1aa37f;
-  --amber: #b7791f;
-  --coral: #c2473b;
-  --line: color-mix(in oklab, var(--ink) 12%, transparent);
-  --shadow: 0 18px 50px color-mix(in oklab, var(--ink) 10%, transparent);
-  --font-display: var(--font-bricolage), ui-sans-serif, system-ui, sans-serif;
-  --font-body: var(--font-plex), ui-sans-serif, system-ui, sans-serif;
-  --font-mono: var(--font-plex-mono), ui-monospace, monospace;
+  --bg: #f5f5f7;
+  --surface: #ffffff;
+  --surface-2: #fbfbfd;
+  --ink: #1d1d1f;
+  --ink-2: #6e6e73;
+  --ink-3: #86868b;
+  --line: rgba(0, 0, 0, 0.08);
+  --line-strong: rgba(0, 0, 0, 0.12);
+  --blue: #0071e3;
+  --blue-hover: #0077ed;
+  --blue-soft: rgba(0, 113, 227, 0.08);
+  --green: #34c759;
+  --green-ink: #248a3d;
+  --green-soft: rgba(52, 199, 89, 0.12);
+  --amber: #ff9f0a;
+  --amber-ink: #9a6700;
+  --amber-soft: rgba(255, 159, 10, 0.14);
+  --red: #ff3b30;
+  --red-ink: #d70015;
+  --red-soft: rgba(255, 59, 48, 0.1);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04), 0 1px 3px rgba(0, 0, 0, 0.03);
+  --shadow-md: 0 4px 24px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.04);
+  --shadow-lg: 0 20px 50px rgba(0, 0, 0, 0.1), 0 2px 8px rgba(0, 0, 0, 0.04);
+  --radius-icon: 22.37%;
+  --font-sans: var(--font-manrope), "Segoe UI", sans-serif;
+  --font-display: var(--font-manrope), "Segoe UI", sans-serif;
 }
 
 @theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
   --color-ink: var(--ink);
-  --color-ink-soft: var(--ink-soft);
-  --color-paper: var(--paper);
-  --color-paper-2: var(--paper-2);
-  --color-mist: var(--mist);
-  --color-teal: var(--teal);
-  --color-teal-deep: var(--teal-deep);
-  --color-teal-bright: var(--teal-bright);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-line: var(--line);
+  --color-blue: var(--blue);
+  --color-blue-hover: var(--blue-hover);
+  --color-blue-soft: var(--blue-soft);
+  --color-green: var(--green);
+  --color-green-ink: var(--green-ink);
+  --color-green-soft: var(--green-soft);
   --color-amber: var(--amber);
-  --color-coral: var(--coral);
-  --font-sans: var(--font-body);
-  --font-mono: var(--font-mono);
+  --color-amber-ink: var(--amber-ink);
+  --color-amber-soft: var(--amber-soft);
+  --color-red: var(--red);
+  --color-red-ink: var(--red-ink);
+  --color-red-soft: var(--red-soft);
+  --font-sans: var(--font-sans);
+  --font-display: var(--font-display);
+  --shadow-sm: var(--shadow-sm);
+  --shadow-md: var(--shadow-md);
+  --shadow-lg: var(--shadow-lg);
 }
 
 * {
@@ -39,39 +62,17 @@
 
 html {
   scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 body {
   margin: 0;
   min-height: 100%;
   color: var(--ink);
-  font-family: var(--font-body);
-  background:
-    radial-gradient(1200px 600px at 10% -10%, #cfe8de 0%, transparent 55%),
-    radial-gradient(900px 500px at 100% 0%, #f0e6cf 0%, transparent 50%),
-    linear-gradient(180deg, var(--paper) 0%, var(--paper-2) 100%);
-  background-attachment: fixed;
-}
-
-body::before {
-  content: "";
-  pointer-events: none;
-  position: fixed;
-  inset: 0;
-  opacity: 0.35;
-  background-image:
-    linear-gradient(var(--line) 1px, transparent 1px),
-    linear-gradient(90deg, var(--line) 1px, transparent 1px);
-  background-size: 48px 48px;
-  mask-image: radial-gradient(ellipse at center, black 20%, transparent 75%);
-  z-index: 0;
-}
-
-main,
-header,
-footer {
-  position: relative;
-  z-index: 1;
+  background: var(--bg);
+  font-family: var(--font-sans);
+  font-feature-settings: "ss01" on, "cv11" on;
 }
 
 a {
@@ -80,24 +81,137 @@ a {
 }
 
 ::selection {
-  background: color-mix(in oklab, var(--teal) 35%, white);
+  background: rgba(0, 113, 227, 0.18);
 }
 
-.font-display {
-  font-family: var(--font-display);
+img {
+  max-width: 100%;
 }
 
-.score-ring {
-  background: conic-gradient(
-    var(--ring-color, var(--teal)) calc(var(--score) * 1%),
-    color-mix(in oklab, var(--ink) 10%, transparent) 0
-  );
+.container-store {
+  width: 100%;
+  max-width: 1080px;
+  margin-inline: auto;
+  padding-inline: 22px;
 }
 
-@keyframes rise-in {
+@media (min-width: 768px) {
+  .container-store {
+    padding-inline: 40px;
+  }
+}
+
+.app-icon {
+  border-radius: var(--radius-icon);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18), var(--shadow-sm);
+}
+
+.hairline {
+  height: 1px;
+  background: var(--line);
+  border: 0;
+}
+
+.btn-get {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 78px;
+  height: 30px;
+  padding: 0 14px;
+  border-radius: 980px;
+  background: var(--blue-soft);
+  color: var(--blue);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  transition: background 0.15s ease, color 0.15s ease, transform 0.15s ease;
+}
+
+.btn-get:hover {
+  background: rgba(0, 113, 227, 0.14);
+}
+
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 44px;
+  padding: 0 22px;
+  border-radius: 980px;
+  background: var(--blue);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.btn-primary:hover {
+  background: var(--blue-hover);
+}
+
+.btn-primary:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 44px;
+  padding: 0 22px;
+  border-radius: 980px;
+  background: rgba(0, 0, 0, 0.04);
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  transition: background 0.15s ease;
+}
+
+.btn-secondary:hover {
+  background: rgba(0, 0, 0, 0.07);
+}
+
+.surface-card {
+  background: var(--surface);
+  border-radius: 28px;
+  box-shadow: var(--shadow-sm);
+}
+
+.rail {
+  display: flex;
+  gap: 16px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  padding-bottom: 4px;
+  margin-inline: -22px;
+  padding-inline: 22px;
+  scrollbar-width: none;
+}
+
+.rail::-webkit-scrollbar {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .rail {
+    margin-inline: -40px;
+    padding-inline: 40px;
+  }
+}
+
+.rail > * {
+  scroll-snap-align: start;
+  flex: 0 0 auto;
+}
+
+@keyframes fade-up {
   from {
     opacity: 0;
-    transform: translateY(16px);
+    transform: translateY(10px);
   }
   to {
     opacity: 1;
@@ -105,49 +219,48 @@ a {
   }
 }
 
-@keyframes scan-sweep {
-  0% {
-    transform: translateY(-100%);
-    opacity: 0;
-  }
-  15% {
-    opacity: 1;
-  }
-  85% {
-    opacity: 1;
-  }
-  100% {
-    transform: translateY(220%);
-    opacity: 0;
-  }
+.fade-up {
+  animation: fade-up 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
-@keyframes pulse-soft {
-  0%,
-  100% {
-    opacity: 0.55;
-  }
-  50% {
-    opacity: 1;
+.fade-up-d1 {
+  animation: fade-up 0.55s cubic-bezier(0.22, 1, 0.36, 1) 0.08s both;
+}
+
+.fade-up-d2 {
+  animation: fade-up 0.55s cubic-bezier(0.22, 1, 0.36, 1) 0.16s both;
+}
+
+@keyframes score-draw {
+  from {
+    stroke-dashoffset: 100;
   }
 }
 
-.anim-rise {
-  animation: rise-in 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+.score-animate {
+  animation: score-draw 1s ease forwards;
 }
 
-.anim-rise-delay-1 {
-  animation: rise-in 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.1s both;
+.field-input {
+  width: 100%;
+  height: 44px;
+  border-radius: 14px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: #fff;
+  padding: 0 14px;
+  font-size: 14px;
+  color: var(--ink);
+  outline: none;
+  transition: box-shadow 0.15s ease, border-color 0.15s ease;
 }
 
-.anim-rise-delay-2 {
-  animation: rise-in 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.2s both;
+.field-input:focus {
+  border-color: transparent;
+  box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.22);
 }
 
-.scan-beam {
-  animation: scan-sweep 3.2s ease-in-out infinite;
-}
-
-.pulse-soft {
-  animation: pulse-soft 2.4s ease-in-out infinite;
+textarea.field-input {
+  height: auto;
+  padding-top: 12px;
+  padding-bottom: 12px;
 }

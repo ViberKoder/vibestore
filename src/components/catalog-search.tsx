@@ -20,18 +20,25 @@ export function CatalogSearch({ initialQ = "" }: { initialQ?: string }) {
   }
 
   return (
-    <form onSubmit={submit} className="flex w-full max-w-xl gap-2">
+    <form onSubmit={submit} className="relative w-full max-w-md">
+      <svg
+        className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-3"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        aria-hidden
+      >
+        <circle cx="11" cy="11" r="7" />
+        <path d="M20 20l-3.5-3.5" strokeLinecap="round" />
+      </svg>
       <input
         value={q}
         onChange={(e) => setQ(e.target.value)}
-        placeholder="Поиск: notes, exe, windows…"
-        className="h-12 flex-1 rounded-xl border border-ink/10 bg-white/70 px-4 text-sm outline-none ring-teal/30 focus:ring-2"
+        placeholder="Поиск приложений"
+        className="h-11 w-full rounded-full border-0 bg-black/[0.045] pl-10 pr-4 text-[14px] text-ink outline-none ring-blue/30 placeholder:text-ink-3 focus:bg-white focus:ring-2"
       />
-      <button
-        type="submit"
-        disabled={pending}
-        className="h-12 rounded-xl bg-ink px-5 text-sm font-semibold text-paper transition hover:bg-teal-deep"
-      >
+      <button type="submit" className="sr-only" disabled={pending}>
         Найти
       </button>
     </form>

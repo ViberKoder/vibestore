@@ -1,34 +1,61 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 const links = [
+  { href: "/", label: "Обзор" },
   { href: "/#catalog", label: "Каталог" },
   { href: "/security", label: "Безопасность" },
   { href: "/dashboard", label: "Кабинет" },
-  { href: "/publish", label: "Опубликовать" },
 ];
 
 export function SiteHeader() {
+  const pathname = usePathname();
+
   return (
-    <header className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-5 py-5 md:px-8">
-      <Link href="/" className="group flex items-baseline gap-2">
-        <span className="font-display text-2xl font-extrabold tracking-tight text-ink md:text-[1.75rem]">
-          Vibe&nbsp;Store
-        </span>
-        <span className="hidden text-xs font-medium uppercase tracking-[0.18em] text-ink-soft sm:inline">
-          verified builds
-        </span>
-      </Link>
-      <nav className="flex items-center gap-1 text-sm md:gap-2">
-        {links.map((l) => (
-          <Link
-            key={l.href}
-            href={l.href}
-            className="rounded-md px-2.5 py-1.5 text-ink-soft transition hover:bg-white/50 hover:text-ink"
-          >
-            {l.label}
+    <header className="sticky top-0 z-40 border-b border-black/[0.06] bg-[rgba(245,245,247,0.78)] backdrop-blur-xl">
+      <div className="container-store flex h-[52px] items-center justify-between gap-4 md:h-[58px]">
+        <div className="flex items-center gap-8">
+          <Link href="/" className="flex items-center gap-2.5">
+            <span className="grid h-7 w-7 place-items-center rounded-[8px] bg-ink text-[13px] font-bold text-white">
+              V
+            </span>
+            <span className="text-[17px] font-bold tracking-[-0.03em] text-ink">
+              Vibe Store
+            </span>
           </Link>
-        ))}
-      </nav>
+          <nav className="hidden items-center gap-1 md:flex">
+            {links.map((l) => {
+              const active =
+                l.href === "/"
+                  ? pathname === "/"
+                  : pathname === l.href || pathname.startsWith(l.href + "/");
+              return (
+                <Link
+                  key={l.href}
+                  href={l.href}
+                  className={`rounded-full px-3 py-1.5 text-[13px] font-medium transition ${
+                    active
+                      ? "bg-black/[0.06] text-ink"
+                      : "text-ink-2 hover:text-ink"
+                  }`}
+                >
+                  {l.label}
+                </Link>
+              );
+            })}
+          </nav>
+        </div>
+        <div className="flex items-center gap-2">
+          <Link
+            href="/publish"
+            className="btn-get !h-9 !min-w-0 !px-4 !text-[13px]"
+          >
+            Опубликовать
+          </Link>
+        </div>
+      </div>
     </header>
   );
 }

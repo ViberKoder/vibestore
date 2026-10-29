@@ -1,30 +1,19 @@
 import type { Metadata } from "next";
-import { Bricolage_Grotesque, IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
+import { Manrope } from "next/font/google";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import "./globals.css";
 
-const display = Bricolage_Grotesque({
-  variable: "--font-bricolage",
-  subsets: ["latin", "latin-ext"],
-});
-
-const plex = IBM_Plex_Sans({
-  variable: "--font-plex",
+const manrope = Manrope({
+  variable: "--font-manrope",
   subsets: ["latin", "cyrillic"],
-  weight: ["400", "500", "600", "700"],
-});
-
-const plexMono = IBM_Plex_Mono({
-  variable: "--font-plex-mono",
-  subsets: ["latin", "cyrillic"],
-  weight: ["400", "500"],
+  weight: ["400", "500", "600", "700", "800"],
 });
 
 export const metadata: Metadata = {
-  title: "Vibe Store — безопасный App Store для вайбкодеров",
+  title: "Vibe Store — безопасный каталог приложений",
   description:
-    "Публикуйте сайты и программы (.exe и другие). Мы проверяем сборки через VirusTotal, ClamAV, ClamWin и собственные движки VibeGuard.",
+    "App Store для вайбкодерских приложений. VirusTotal, ClamAV, ClamWin и VibeGuard проверяют каждую сборку до скачивания.",
 };
 
 export default function RootLayout({
@@ -33,11 +22,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html
-      lang="ru"
-      className={`${display.variable} ${plex.variable} ${plexMono.variable} h-full antialiased`}
-    >
-      <body className="flex min-h-full flex-col font-sans text-ink">
+    <html lang="ru" className={`${manrope.variable} h-full antialiased`}>
+      <body className="flex min-h-full flex-col bg-bg font-sans text-ink">
         <SiteHeader />
         {children}
         <SiteFooter />

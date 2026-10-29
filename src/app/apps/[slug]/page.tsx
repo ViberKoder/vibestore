@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ScanReportView } from "@/components/scan-report";
+import { AppIcon } from "@/components/app-icon";
 import { SafetyBadge } from "@/components/safety-badge";
+import { ScanReportView } from "@/components/scan-report";
 import { formatBytes, formatNumber } from "@/lib/format";
-import { getAppBySlug } from "@/lib/store";
+import { getAppBySlug, listApps } from "@/lib/store";
+import { AppRow } from "@/components/app-row";
 
 export default async function AppPage({
   params,
@@ -18,109 +20,153 @@ export default async function AppPage({
     app.status === "published" ||
     (app.status === "quarantined" && app.scan?.readiness !== "blocked");
 
+  const related = (await listApps({ status: "published" }))
+    .filter((a) => a.id !== app.id)
+    .slice(0, 4);
+
   return (
-    <main className="mx-auto w-full max-w-6xl flex-1 px-5 pb-20 pt-4 md:px-8">
-      <Link
-        href="/#catalog"
-        className="text-sm text-ink-soft transition hover:text-ink"
-      >
-        ← Каталог
-      </Link>
+    <main className="flex-1 pb-20 pt-6 md:pt-10">
+      <div className="container-store">
+        <Link
+          href="/#catalog"
+          className="text-[14px] font-medium text-blue hover:underline"
+        >
+          ← Каталог
+        </Link>
 
-      <div className="mt-6 grid gap-10 lg:grid-cols-[1.1fr_0.9fr]">
-        <section className="anim-rise">
-          <div className="flex items-start gap-5">
-            <div
-              className="grid h-20 w-20 shrink-0 place-items-center rounded-3xl text-2xl font-bold text-white"
-              style={{
-                background: `linear-gradient(145deg, hsl(${app.iconHue} 42% 38%), hsl(${(app.iconHue + 40) % 360} 48% 28%))`,
-              }}
-            >
-              {app.name.slice(0, 1)}
+        <section className="fade-up mt-6 flex flex-col gap-6 sm:flex-row sm:items-start">
+          <AppIcon app={app} size="xl" />
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2.5">
+              <h1 className="text-[34px] font-extrabold tracking-[-0.04em] text-ink md:text-[44px]">
+                {app.name}
+              </h1>
+              <SafetyBadge app={app} />
             </div>
-            <div>
-              <div className="flex flex-wrap items-center gap-2">
-                <h1 className="font-display text-4xl font-extrabold tracking-tight md:text-5xl">
-                  {app.name}
-                </h1>
-                <SafetyBadge app={app} />
-              </div>
-              <p className="mt-2 text-lg text-ink-soft">{app.tagline}</p>
-            </div>
-          </div>
+            <p className="mt-1 text-[17px] text-blue">{app.developerName}</p>
+            <p className="mt-3 max-w-xl text-[15px] leading-relaxed text-ink-2">
+              {app.tagline}
+            </p>
 
-          <p className="mt-8 max-w-2xl text-base leading-relaxed text-ink">
-            {app.description}
-          </p>
-
-          <dl className="mt-8 grid grid-cols-2 gap-3 text-sm md:grid-cols-3">
-            <Meta label="Разработчик" value={app.developerName} />
-            <Meta label="Версия" value={app.version} />
-            <Meta label="Категория" value={app.category} />
-            <Meta label="Тип" value={app.kind} />
-            <Meta label="Файл" value={app.fileName} />
-            <Meta label="Размер" value={formatBytes(app.fileSize)} />
-            <Meta label="Загрузки" value={formatNumber(app.downloads)} />
-            <Meta
-              label="SHA256"
-              value={`${app.sha256.slice(0, 12)}…`}
-              mono
-            />
-          </dl>
-
-          {app.tags.length > 0 && (
-            <div className="mt-6 flex flex-wrap gap-2">
-              {app.tags.map((t) => (
-                <span
-                  key={t}
-                  className="rounded-md bg-white/60 px-2 py-1 text-xs text-ink-soft ring-1 ring-ink/8"
+            <div className="mt-6 flex flex-wrap items-center gap-3">
+              {canDownload ? (
+                <a
+                  href={`/api/apps/${app.id}/download`}
+                  className="btn-primary !h-10 !px-6 !text-[14px]"
                 >
-                  {t}
+                  {app.status === "quarantined"
+                    ? "Скачать на свой риск"
+                    : "Скачать"}
+                </a>
+              ) : (
+                <span className="inline-flex h-10 items-center rounded-full bg-red-soft px-5 text-[14px] font-semibold text-red-ink">
+                  Скачивание недоступно
                 </span>
-              ))}
+              )}
+              {app.homepage && (
+                <a
+                  href={app.homepage}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="btn-secondary !h-10 !px-5 !text-[14px]"
+                >
+                  Сайт
+                </a>
+              )}
             </div>
-          )}
-
-          <div className="mt-10 flex flex-wrap gap-3">
-            {canDownload ? (
-              <a
-                href={`/api/apps/${app.id}/download`}
-                className="inline-flex h-12 items-center rounded-xl bg-teal px-6 text-sm font-semibold text-white transition hover:bg-teal-deep"
-              >
-                Скачать
-                {app.status === "quarantined" ? " (на свой риск)" : ""}
-              </a>
-            ) : (
-              <span className="inline-flex h-12 items-center rounded-xl bg-coral/15 px-6 text-sm font-semibold text-coral ring-1 ring-coral/25">
-                Скачивание заблокировано
-              </span>
-            )}
-            {app.homepage && (
-              <a
-                href={app.homepage}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex h-12 items-center rounded-xl bg-white/70 px-6 text-sm font-semibold ring-1 ring-ink/10"
-              >
-                Сайт проекта
-              </a>
-            )}
           </div>
         </section>
 
-        <aside className="anim-rise-delay-1 rounded-[1.5rem] bg-white/55 p-6 ring-1 ring-ink/8 md:p-8">
-          {app.scan ? (
-            <ScanReportView report={app.scan} />
-          ) : (
-            <p className="text-ink-soft">Отчёт сканирования ещё не готов.</p>
-          )}
-        </aside>
+        <div className="fade-up-d1 mt-10 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <Stat label="Оценка" value={String(app.scan?.securityScore ?? "—")} />
+          <Stat label="Категория" value={app.category} />
+          <Stat label="Версия" value={app.version} />
+          <Stat label="Загрузки" value={formatNumber(app.downloads)} />
+        </div>
+
+        <div className="fade-up-d2 mt-12 grid gap-10 lg:grid-cols-[1fr_360px] lg:gap-14">
+          <div className="space-y-10">
+            <section>
+              <h2 className="text-[20px] font-bold tracking-[-0.03em]">
+                Описание
+              </h2>
+              <p className="mt-3 text-[15px] leading-[1.7] text-ink-2">
+                {app.description}
+              </p>
+            </section>
+
+            <section>
+              <h2 className="text-[20px] font-bold tracking-[-0.03em]">
+                Информация
+              </h2>
+              <dl className="mt-4 divide-y divide-black/[0.06] border-y border-black/[0.06]">
+                <InfoRow label="Разработчик" value={app.developerName} />
+                <InfoRow label="Размер" value={formatBytes(app.fileSize)} />
+                <InfoRow label="Файл" value={app.fileName} />
+                <InfoRow label="Тип" value={app.kind} />
+                <InfoRow
+                  label="SHA256"
+                  value={`${app.sha256.slice(0, 16)}…`}
+                  mono
+                />
+              </dl>
+              {app.tags.length > 0 && (
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {app.tags.map((t) => (
+                    <span
+                      key={t}
+                      className="rounded-full bg-black/[0.04] px-3 py-1 text-[12px] font-medium text-ink-2"
+                    >
+                      {t}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </section>
+
+            {related.length > 0 && (
+              <section>
+                <h2 className="text-[20px] font-bold tracking-[-0.03em]">
+                  Ещё из каталога
+                </h2>
+                <div className="mt-3 surface-card px-4">
+                  {related.map((a) => (
+                    <AppRow key={a.id} app={a} />
+                  ))}
+                </div>
+              </section>
+            )}
+          </div>
+
+          <aside className="surface-card h-fit p-6 md:p-7">
+            {app.scan ? (
+              <ScanReportView report={app.scan} />
+            ) : (
+              <p className="text-[14px] text-ink-2">
+                Отчёт сканирования ещё не готов.
+              </p>
+            )}
+          </aside>
+        </div>
       </div>
     </main>
   );
 }
 
-function Meta({
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl bg-surface px-4 py-4 shadow-[var(--shadow-sm)]">
+      <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-3">
+        {label}
+      </div>
+      <div className="mt-1 truncate text-[18px] font-bold tracking-[-0.02em]">
+        {value}
+      </div>
+    </div>
+  );
+}
+
+function InfoRow({
   label,
   value,
   mono,
@@ -130,11 +176,13 @@ function Meta({
   mono?: boolean;
 }) {
   return (
-    <div className="rounded-xl bg-white/55 px-3 py-3 ring-1 ring-ink/8">
-      <dt className="text-[10px] uppercase tracking-wider text-ink-soft">
-        {label}
-      </dt>
-      <dd className={`mt-1 ${mono ? "font-mono text-xs" : "font-medium"}`}>
+    <div className="flex items-baseline justify-between gap-4 py-3.5">
+      <dt className="text-[13px] text-ink-2">{label}</dt>
+      <dd
+        className={`text-right text-[13px] font-medium text-ink ${
+          mono ? "font-mono text-[12px]" : ""
+        }`}
+      >
         {value}
       </dd>
     </div>
