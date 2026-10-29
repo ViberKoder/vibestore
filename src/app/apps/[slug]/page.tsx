@@ -1,21 +1,25 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AppIcon } from "@/components/app-icon";
+import { AppRow } from "@/components/app-row";
+import { AppScanGate } from "@/components/app-scan-gate";
 import { SafetyBadge } from "@/components/safety-badge";
-import { ScanReportView } from "@/components/scan-report";
 import { formatBytes, formatNumber } from "@/lib/format";
 import { getAppBySlug, listApps } from "@/lib/store";
-import { AppRow } from "@/components/app-row";
 
 export default async function AppPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ scanning?: string }>;
 }) {
   const { slug } = await params;
+  const sp = await searchParams;
   const app = await getAppBySlug(slug);
   if (!app) notFound();
 
+  const forceScanning = sp.scanning === "1";
   const canDownload =
     app.status === "published" ||
     (app.status === "quarantined" && app.scan?.readiness !== "blocked");
@@ -58,6 +62,10 @@ export default async function AppPage({
                     ? "Скачать на свой риск"
                     : "Скачать"}
                 </a>
+              ) : app.status === "scanning" || forceScanning ? (
+                <span className="inline-flex h-10 items-center rounded-full bg-blue-soft px-5 text-[14px] font-semibold text-blue">
+                  Сканирование…
+                </span>
               ) : (
                 <span className="inline-flex h-10 items-center rounded-full bg-red-soft px-5 text-[14px] font-semibold text-red-ink">
                   Скачивание недоступно
@@ -78,13 +86,16 @@ export default async function AppPage({
         </section>
 
         <div className="fade-up-d1 mt-10 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <Stat label="Оценка" value={String(app.scan?.securityScore ?? "—")} />
+          <Stat
+            label="Оценка"
+            value={String(app.scan?.securityScore ?? "—")}
+          />
           <Stat label="Категория" value={app.category} />
           <Stat label="Версия" value={app.version} />
           <Stat label="Загрузки" value={formatNumber(app.downloads)} />
         </div>
 
-        <div className="fade-up-d2 mt-12 grid gap-10 lg:grid-cols-[1fr_360px] lg:gap-14">
+        <div className="fade-up-d2 mt-12 grid gap-10 lg:grid-cols-[1fr_400px] lg:gap-14">
           <div className="space-y-10">
             <section>
               <h2 className="text-[20px] font-bold tracking-[-0.03em]">
@@ -138,14 +149,8 @@ export default async function AppPage({
             )}
           </div>
 
-          <aside className="surface-card h-fit p-6 md:p-7">
-            {app.scan ? (
-              <ScanReportView report={app.scan} />
-            ) : (
-              <p className="text-[14px] text-ink-2">
-                Отчёт сканирования ещё не готов.
-              </p>
-            )}
+          <aside className="h-fit">
+            <AppScanGate app={app} forceScanning={forceScanning} />
           </aside>
         </div>
       </div>

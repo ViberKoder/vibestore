@@ -27,6 +27,8 @@ export type ScannerVerdict =
 
 export type ReleaseReadiness = "ready" | "needs_fixes" | "blocked";
 
+export type ScanEnginePhase = "pending" | "running" | "done";
+
 export interface ThreatFinding {
   id: string;
   scanner: ScannerId;
@@ -55,6 +57,26 @@ export interface EngineResult {
   summary: string;
   findings: ThreatFinding[];
   meta?: Record<string, string | number | boolean>;
+}
+
+export interface ScanEngineProgress {
+  scanner: ScannerId;
+  displayName: string;
+  phase: ScanEnginePhase;
+  verdict?: ScannerVerdict;
+  summary?: string;
+  startedAt?: string;
+  finishedAt?: string;
+}
+
+export interface ScanProgress {
+  phase: "queued" | "running" | "done" | "error";
+  label: string;
+  percent: number;
+  currentEngine?: ScannerId;
+  engines: ScanEngineProgress[];
+  error?: string;
+  updatedAt: string;
 }
 
 export interface ScanReport {
@@ -96,6 +118,7 @@ export interface StoreApp {
   downloads: number;
   iconHue: number;
   scan?: ScanReport;
+  scanProgress?: ScanProgress;
 }
 
 export interface StoreDatabase {
@@ -114,3 +137,20 @@ export interface PublishInput {
   homepage?: string;
   tags: string[];
 }
+
+export const SCAN_ENGINE_ORDER: Array<{
+  scanner: ScannerId;
+  displayName: string;
+}> = [
+  { scanner: "clamav", displayName: "ClamAV" },
+  { scanner: "clamwin", displayName: "ClamWin (ClamAV DB)" },
+  { scanner: "virustotal", displayName: "VirusTotal" },
+  { scanner: "vibeguard", displayName: "VibeGuard" },
+  { scanner: "entropy", displayName: "Entropy Analyzer" },
+  { scanner: "pe-inspector", displayName: "PE Inspector" },
+  { scanner: "network-sink", displayName: "Network Sink Scanner" },
+  { scanner: "web-static", displayName: "Web Static Auditor" },
+];
+
+/** Soft ceiling for very large builds (e.g. 200MB installers). */
+export const MAX_UPLOAD_BYTES = 512 * 1024 * 1024;

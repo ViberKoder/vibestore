@@ -77,7 +77,29 @@ async function uploadAndAnalyze(
     fileName || "upload.bin",
   );
 
-  const upload = await vtFetch("/files", { method: "POST", body: form });
+  // Free Public API: ≤32MB → /files ; larger → one-time upload_url (up to 650MB)
+  let upload: Response;
+  if (buf.length > 32 * 1024 * 1024) {
+    const urlRes = await vtFetch("/files/upload_url");
+    if (!urlRes.ok) {
+      throw new Error(
+        `VirusTotal upload_url failed ${urlRes.status} (нужен для файлов > 32 МБ)`,
+      );
+    }
+    const urlJson = (await urlRes.json()) as { data?: string };
+    const uploadUrl = urlJson.data;
+    if (!uploadUrl) throw new Error("VirusTotal не вернул upload_url");
+    const key = vtKey()!;
+    upload = await fetch(uploadUrl, {
+      method: "POST",
+      headers: { "x-apikey": key },
+      body: form,
+      cache: "no-store",
+    });
+  } else {
+    upload = await vtFetch("/files", { method: "POST", body: form });
+  }
+
   if (upload.status === 401 || upload.status === 403) {
     throw new Error(`VirusTotal upload auth failed (${upload.status})`);
   }
@@ -238,38 +260,16 @@ export async function runVirusTotal(
       return toResult(started, sha256, existing.stats, existing.names, "hash-lookup");
     }
 
-    // Unknown hash — upload to VT Public API (max 32MB on free tier without special URL)
-    if (buf.length > 32 * 1024 * 1024) {
-      return {
-        scanner: "virustotal",
-        displayName: "VirusTotal",
-        verdict: "error",
-        score: 0,
-        durationMs: Date.now() - started,
-        summary:
-          "Файл > 32 МБ — для Public API нужна special upload URL (не настроена).",
-        findings: [
-          {
-            id: "vt-too-large",
-            scanner: "virustotal",
-            severity: "medium",
-            title: "Файл слишком большой для VT Public upload",
-            detail: "Hash не найден в VT, upload на free tier ограничен 32 МБ.",
-            category: "policy",
-          },
-        ],
-        meta: { mode: "too-large", sha256, bytes: buf.length },
-      };
-    }
-
     const analyzed = await uploadAndAnalyze(buf, fileName);
+    const mode =
+      buf.length > 32 * 1024 * 1024 ? "large-upload+analyze" : "upload+analyze";
     return toResult(
       started,
       analyzed.sha256,
       analyzed.stats,
       analyzed.names,
-      "upload+analyze",
-      { analysisId: analyzed.analysisId },
+      mode,
+      { analysisId: analyzed.analysisId, bytes: buf.length },
     );
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

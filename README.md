@@ -25,16 +25,18 @@ npm run dev
 
 ## Антивирусы (без обходов)
 
-- **VirusTotal Public API v3** — hash lookup, если файла нет — upload + poll analysis. Нужен `VIRUSTOTAL_API_KEY` (бесплатный community key: https://www.virustotal.com/gui/my-apikey). Без ключа движок возвращает `error`, эмуляция не подменяет результат.
-- **ClamAV** — нативный `clamscan` + базы `/var/lib/clamav`.
-- **ClamWin** — тот же ClamAV signature DB (продукт ClamWin на Windows); на сервере тоже native scan, не фейковый pass.
+- **VirusTotal Public API v3** — hash lookup; если файла нет — upload (≤32 МБ) или `upload_url` (крупные .exe до сотен МБ). Ключ только в env.
+- **ClamAV / ClamWin** — нативный `clamscan`, без эмуляции-обхода.
+- Живой прогресс скана по каждому движку на странице приложения.
+- Лимит загрузки: **512 МБ** (удобно для ~200 МБ installers).
 
 ```bash
 cp .env.example .env.local
-# впишите VIRUSTOTAL_API_KEY=
+# VIRUSTOTAL_API_KEY=...
 
-# публичный туннель для теста
+npm run dev
+# или публичный туннель:
 ./scripts/start-public.sh
 ```
 
-Данные: `data/store.json`, загрузки — `data/uploads/`.
+Данные: `data/store.json`, загрузки — `data/uploads/`. Фейковых seed-приложений нет.

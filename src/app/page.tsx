@@ -24,14 +24,14 @@ export default async function Home({
     ? all.filter((a) => a.status !== "queued")
     : published;
 
-  const featured =
-    published.find((a) => a.slug === "pixel-notes") ?? published[0];
+  const featured = published[0];
   const topCharts = published.slice(0, 6);
   const desktop = published.filter((a) => a.kind === "desktop");
   const web = published.filter((a) => a.kind === "web");
   const caution = (await listApps({ status: "all" })).filter(
     (a) => a.status === "quarantined" || a.status === "rejected",
   );
+  const hasApps = (await listApps({ status: "all" })).length > 0;
 
   return (
     <main className="flex-1 pb-20 pt-6 md:pt-10">
@@ -50,8 +50,8 @@ export default async function Home({
             проходит VirusTotal, ClamAV и собственные проверки до публикации.
           </p>
           <div className="mt-7 flex flex-wrap gap-3">
-            <Link href="#catalog" className="btn-primary">
-              Смотреть каталог
+            <Link href={hasApps ? "#catalog" : "/publish"} className="btn-primary">
+              {hasApps ? "Смотреть каталог" : "Опубликовать первое приложение"}
             </Link>
             <Link href="/publish" className="btn-secondary">
               Опубликовать приложение
@@ -69,7 +69,7 @@ export default async function Home({
           <TrustStrip />
         </section>
 
-        {!q && (
+        {!q && published.length > 0 && (
           <section>
             <SectionHeader
               title="Подборки"
@@ -82,18 +82,22 @@ export default async function Home({
                 apps={published}
                 href="/#catalog"
               />
-              <CollectionCard
-                title="Для Mac и Windows"
-                subtitle="Desktop-утилиты и .exe"
-                apps={desktop.length ? desktop : published}
-                href="/?status=all#catalog"
-              />
-              <CollectionCard
-                title="Веб-инструменты"
-                subtitle="Сайты и HTML-утилиты"
-                apps={web.length ? web : published}
-                href="/#catalog"
-              />
+              {desktop.length > 0 && (
+                <CollectionCard
+                  title="Для Mac и Windows"
+                  subtitle="Desktop-утилиты и .exe"
+                  apps={desktop}
+                  href="/?status=all#catalog"
+                />
+              )}
+              {web.length > 0 && (
+                <CollectionCard
+                  title="Веб-инструменты"
+                  subtitle="Сайты и HTML-утилиты"
+                  apps={web}
+                  href="/#catalog"
+                />
+              )}
             </div>
           </section>
         )}
@@ -149,12 +153,18 @@ export default async function Home({
 
           <div className="surface-card px-4 md:px-6">
             {catalog.length === 0 ? (
-              <p className="py-16 text-center text-[14px] text-ink-2">
-                Ничего не найдено.{" "}
-                <Link href="/publish" className="text-blue hover:underline">
-                  Опубликуйте первую сборку
+              <div className="py-16 text-center">
+                <p className="text-[16px] font-semibold text-ink">
+                  Каталог пока пуст
+                </p>
+                <p className="mt-2 text-[14px] text-ink-2">
+                  Здесь только реальные сборки после проверки. Фейковых
+                  приложений нет.
+                </p>
+                <Link href="/publish" className="btn-primary mt-6 inline-flex">
+                  Опубликовать сборку
                 </Link>
-              </p>
+              </div>
             ) : (
               catalog.map((app) => <AppRow key={app.id} app={app} />)
             )}
@@ -164,8 +174,8 @@ export default async function Home({
         {!q && caution.length > 0 && (
           <section>
             <SectionHeader
-              title="Лаборатория угроз"
-              subtitle="Учебные и заблокированные образцы — скачивание закрыто"
+              title="Отклонённые / на доработке"
+              subtitle="Реальные сборки, которые не прошли проверку"
               href="/security"
               action="Как ловим"
             />

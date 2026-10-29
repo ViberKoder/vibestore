@@ -1,13 +1,18 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useState } from "react";
+import { formatBytes } from "@/lib/format";
+import { MAX_UPLOAD_BYTES } from "@/lib/types";
+
+type Phase = "idle" | "uploading" | "starting_scan";
 
 export function PublishForm() {
   const router = useRouter();
-  const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
-  const [phase, setPhase] = useState<"idle" | "uploading" | "scanning">("idle");
+  const [phase, setPhase] = useState<Phase>("idle");
+  const [uploadPct, setUploadPct] = useState(0);
+  const [fileLabel, setFileLabel] = useState<string | null>(null);
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -19,38 +24,35 @@ export function PublishForm() {
       setError("Прикрепите файл приложения (.exe, .zip, .html и др.)");
       return;
     }
+    if (file.size > MAX_UPLOAD_BYTES) {
+      setError(
+        `Файл слишком большой (макс. ${Math.round(MAX_UPLOAD_BYTES / 1024 / 1024)} МБ)`,
+      );
+      return;
+    }
 
     setPhase("uploading");
-    startTransition(async () => {
-      try {
-        setPhase("scanning");
-        const res = await fetch("/api/publish", {
-          method: "POST",
-          body: data,
-        });
-        const json = (await res.json()) as {
-          app?: { slug: string };
-          error?: string;
-        };
-        if (!res.ok) {
-          setError(json.error ?? "Ошибка публикации");
-          setPhase("idle");
-          return;
-        }
-        if (json.app?.slug) {
-          router.push(`/apps/${json.app.slug}`);
-          return;
-        }
-        setError("Неожиданный ответ сервера");
+    setUploadPct(0);
+    setFileLabel(`${file.name} · ${formatBytes(file.size)}`);
+
+    try {
+      const json = await uploadWithProgress(data, (pct) => setUploadPct(pct));
+      if (json.error || !json.app?.slug) {
+        setError(json.error ?? "Ошибка публикации");
         setPhase("idle");
-      } catch {
-        setError("Сеть недоступна или сервер не ответил");
-        setPhase("idle");
+        return;
       }
-    });
+      setPhase("starting_scan");
+      setUploadPct(100);
+      // App page shows live per-engine scan progress and starts the scan
+      router.push(`/apps/${json.app.slug}?scanning=1`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Сеть недоступна");
+      setPhase("idle");
+    }
   }
 
-  const busy = pending || phase !== "idle";
+  const busy = phase !== "idle";
 
   return (
     <form onSubmit={onSubmit} className="space-y-5">
@@ -69,6 +71,7 @@ export function PublishForm() {
           rows={4}
           className="field-input min-h-[110px] resize-y"
           placeholder="Что делает приложение и для кого"
+          disabled={busy}
         />
       </label>
       <div className="grid gap-4 md:grid-cols-2">
@@ -77,18 +80,30 @@ export function PublishForm() {
           name="developerName"
           required
           placeholder="Ваше имя или студия"
+          disabled={busy}
         />
         <Field
           label="Email"
           name="developerEmail"
           type="email"
           placeholder="dev@example.com"
+          disabled={busy}
         />
-        <Field label="Версия" name="version" placeholder="0.1.0" />
-        <Field label="Категория" name="category" placeholder="Utilities" />
+        <Field label="Версия" name="version" placeholder="0.1.0" disabled={busy} />
+        <Field
+          label="Категория"
+          name="category"
+          placeholder="Utilities"
+          disabled={busy}
+        />
         <label className="block space-y-2">
           <span className="text-[13px] font-semibold text-ink">Тип</span>
-          <select name="kind" className="field-input" defaultValue="desktop">
+          <select
+            name="kind"
+            className="field-input"
+            defaultValue="desktop"
+            disabled={busy}
+          >
             <option value="desktop">Desktop (.exe и др.)</option>
             <option value="web">Web / сайт</option>
             <option value="cli">CLI</option>
@@ -96,12 +111,13 @@ export function PublishForm() {
             <option value="other">Other</option>
           </select>
         </label>
-        <Field label="Сайт" name="homepage" placeholder="https://" />
+        <Field label="Сайт" name="homepage" placeholder="https://" disabled={busy} />
       </div>
       <Field
         label="Теги (через запятую)"
         name="tags"
         placeholder="windows, productivity, vibe"
+        disabled={busy}
       />
 
       <label className="block space-y-2">
@@ -111,13 +127,51 @@ export function PublishForm() {
             type="file"
             name="file"
             required
+            disabled={busy}
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              setFileLabel(f ? `${f.name} · ${formatBytes(f.size)}` : null);
+            }}
             className="block w-full text-[13px] text-ink-2 file:mr-3 file:rounded-full file:border-0 file:bg-blue-soft file:px-4 file:py-2 file:text-[13px] file:font-semibold file:text-blue"
           />
           <p className="mt-3 text-[12px] text-ink-3">
-            До 64 МБ · exe, msi, zip, dmg, html, apk, jar и другие
+            До {Math.round(MAX_UPLOAD_BYTES / 1024 / 1024)} МБ · exe, msi, zip,
+            dmg, html, apk и другие. После загрузки откроется живой прогресс
+            скана по каждому антивирусу.
           </p>
+          {fileLabel && (
+            <p className="mt-2 text-[13px] font-medium text-ink">{fileLabel}</p>
+          )}
         </div>
       </label>
+
+      {busy && (
+        <div className="rounded-2xl border border-blue/20 bg-blue-soft px-4 py-4">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-[14px] font-semibold text-ink">
+                {phase === "uploading"
+                  ? "Загрузка файла на сервер…"
+                  : "Файл сохранён — открываем экран сканирования…"}
+              </p>
+              <p className="mt-0.5 text-[12px] text-ink-2">
+                {phase === "uploading"
+                  ? "Большие .exe могут загружаться минуту и дольше."
+                  : "Дальше увидите ClamAV, VirusTotal и остальные движки по шагам."}
+              </p>
+            </div>
+            <span className="text-[20px] font-bold tabular-nums text-blue">
+              {uploadPct}%
+            </span>
+          </div>
+          <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/70">
+            <div
+              className="h-full rounded-full bg-blue transition-all duration-300"
+              style={{ width: `${uploadPct}%` }}
+            />
+          </div>
+        </div>
+      )}
 
       {error && (
         <p className="rounded-2xl bg-red-soft px-4 py-3 text-[13px] text-red-ink">
@@ -125,13 +179,46 @@ export function PublishForm() {
         </p>
       )}
 
-      <button type="submit" disabled={busy} className="btn-primary w-full sm:w-auto">
-        {busy
-          ? "Сканируем VirusTotal · ClamAV · VibeGuard…"
-          : "Загрузить и просканировать"}
+      <button
+        type="submit"
+        disabled={busy}
+        className="btn-primary w-full sm:w-auto"
+      >
+        {busy ? "Идёт загрузка…" : "Загрузить и просканировать"}
       </button>
     </form>
   );
+}
+
+function uploadWithProgress(
+  data: FormData,
+  onProgress: (pct: number) => void,
+): Promise<{ app?: { slug: string; id: string }; error?: string }> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", "/api/publish");
+    xhr.upload.onprogress = (ev) => {
+      if (!ev.lengthComputable) return;
+      onProgress(Math.max(1, Math.round((ev.loaded / ev.total) * 100)));
+    };
+    xhr.onload = () => {
+      try {
+        const json = JSON.parse(xhr.responseText) as {
+          app?: { slug: string; id: string };
+          error?: string;
+        };
+        if (xhr.status >= 400) {
+          resolve({ error: json.error ?? `HTTP ${xhr.status}` });
+          return;
+        }
+        resolve(json);
+      } catch {
+        reject(new Error("Некорректный ответ сервера"));
+      }
+    };
+    xhr.onerror = () => reject(new Error("Сеть недоступна или сервер не ответил"));
+    xhr.send(data);
+  });
 }
 
 function Field({
@@ -140,12 +227,14 @@ function Field({
   required,
   placeholder,
   type = "text",
+  disabled,
 }: {
   label: string;
   name: string;
   required?: boolean;
   placeholder?: string;
   type?: string;
+  disabled?: boolean;
 }) {
   return (
     <label className="block space-y-2">
@@ -155,6 +244,7 @@ function Field({
         type={type}
         required={required}
         placeholder={placeholder}
+        disabled={disabled}
         className="field-input"
       />
     </label>

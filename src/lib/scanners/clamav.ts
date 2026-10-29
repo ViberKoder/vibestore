@@ -157,8 +157,10 @@ function errorResult(
 export async function runClamAv(
   filePath: string,
   _buf: Buffer,
-  _fileName: string,
+  _fileName?: string,
 ): Promise<EngineResult> {
+  void _buf;
+  void _fileName;
   const started = Date.now();
   const outcome = await runNativeClam(filePath, "ClamAV");
   if (outcome.kind === "clean") {

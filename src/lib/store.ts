@@ -2,7 +2,7 @@ import { promises as fs } from "fs";
 import path from "path";
 import { connection } from "next/server";
 import { DB_PATH, DATA_DIR, UPLOADS_DIR } from "./paths";
-import type { StoreApp, StoreDatabase } from "./types";
+import type { ScanProgress, StoreApp, StoreDatabase } from "./types";
 import { seedApps } from "./seed";
 
 async function ensureDirs() {
@@ -73,6 +73,29 @@ export async function upsertApp(app: StoreApp): Promise<StoreApp> {
   else db.apps.unshift(app);
   await writeDb(db);
   return app;
+}
+
+export async function patchApp(
+  id: string,
+  patch: Partial<StoreApp>,
+): Promise<StoreApp | null> {
+  const db = await readDb();
+  const idx = db.apps.findIndex((a) => a.id === id);
+  if (idx < 0) return null;
+  db.apps[idx] = {
+    ...db.apps[idx],
+    ...patch,
+    updatedAt: new Date().toISOString(),
+  };
+  await writeDb(db);
+  return db.apps[idx];
+}
+
+export async function updateScanProgress(
+  id: string,
+  scanProgress: ScanProgress,
+): Promise<void> {
+  await patchApp(id, { scanProgress, status: "scanning" });
 }
 
 export async function bumpDownloads(id: string): Promise<void> {

@@ -1,14 +1,17 @@
+import { createWriteStream } from "fs";
 import { promises as fs } from "fs";
 import path from "path";
+import { Readable } from "stream";
+import { pipeline } from "stream/promises";
 import { NextResponse } from "next/server";
-import { sha256Buffer } from "@/lib/hash";
-import { runScanPipeline, statusFromReport } from "@/lib/scanners/pipeline";
+import { createHash } from "crypto";
+import { initialScanProgress } from "@/lib/scanners/pipeline";
 import { listApps, uploadPathFor, upsertApp } from "@/lib/store";
 import { uniqueSlug } from "@/lib/slug";
-import type { AppKind, StoreApp } from "@/lib/types";
+import { MAX_UPLOAD_BYTES, type AppKind, type StoreApp } from "@/lib/types";
 
 export const runtime = "nodejs";
-export const maxDuration = 120;
+export const maxDuration = 600;
 
 const ALLOWED_EXT = new Set([
   ".exe",
@@ -42,6 +45,37 @@ const ALLOWED_EXT = new Set([
   ".gz",
   ".tgz",
 ]);
+
+async function saveUpload(file: File, dest: string): Promise<{ size: number; sha256: string }> {
+  await fs.mkdir(path.dirname(dest), { recursive: true });
+  const hash = createHash("sha256");
+  let size = 0;
+
+  // Web File stream → Node writable (avoids buffering entire 200MB twice when possible)
+  const webStream = file.stream();
+  const nodeReadable = Readable.fromWeb(
+    webStream as import("stream/web").ReadableStream,
+  );
+  const out = createWriteStream(dest);
+
+  nodeReadable.on("data", (chunk: Buffer | string) => {
+    const buf = typeof chunk === "string" ? Buffer.from(chunk) : chunk;
+    size += buf.length;
+    hash.update(buf);
+    if (size > MAX_UPLOAD_BYTES) {
+      nodeReadable.destroy(new Error("FILE_TOO_LARGE"));
+    }
+  });
+
+  try {
+    await pipeline(nodeReadable, out);
+  } catch (err) {
+    await fs.unlink(dest).catch(() => undefined);
+    throw err;
+  }
+
+  return { size, sha256: hash.digest("hex") };
+}
 
 export async function POST(req: Request) {
   const form = await req.formData();
@@ -81,28 +115,48 @@ export async function POST(req: Request) {
     );
   }
 
-  if (file.size > 64 * 1024 * 1024) {
+  if (file.size > MAX_UPLOAD_BYTES) {
     return NextResponse.json(
-      { error: "Max upload size is 64 MB" },
+      {
+        error: `Файл слишком большой (макс. ${Math.round(MAX_UPLOAD_BYTES / 1024 / 1024)} МБ)`,
+      },
       { status: 400 },
     );
   }
 
   const existing = await listApps({ status: "all" });
-  const slug = uniqueSlug(name, existing.map((a) => a.slug));
+  const slug = uniqueSlug(
+    name,
+    existing.map((a) => a.slug),
+  );
   const id = `app_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
   const storedName = `${id}${ext || ".bin"}`;
   const filePath = uploadPathFor(storedName);
 
-  const ab = await file.arrayBuffer();
-  const buffer = Buffer.from(ab);
-  await fs.mkdir(path.dirname(filePath), { recursive: true });
-  await fs.writeFile(filePath, buffer);
+  let size: number;
+  let sha256: string;
+  try {
+    const saved = await saveUpload(file, filePath);
+    size = saved.size;
+    sha256 = saved.sha256;
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    if (message.includes("FILE_TOO_LARGE")) {
+      return NextResponse.json(
+        {
+          error: `Файл слишком большой (макс. ${Math.round(MAX_UPLOAD_BYTES / 1024 / 1024)} МБ)`,
+        },
+        { status: 400 },
+      );
+    }
+    return NextResponse.json(
+      { error: `Ошибка сохранения файла: ${message}` },
+      { status: 500 },
+    );
+  }
 
-  const sha256 = sha256Buffer(buffer);
   const now = new Date().toISOString();
-
-  let app: StoreApp = {
+  const app: StoreApp = {
     id,
     slug,
     name,
@@ -119,29 +173,17 @@ export async function POST(req: Request) {
     createdAt: now,
     updatedAt: now,
     fileName: file.name,
-    fileSize: buffer.length,
+    fileSize: size,
     mimeType: file.type || "application/octet-stream",
     filePath,
     sha256,
     downloads: 0,
     iconHue: Math.floor(Math.random() * 360),
+    scanProgress: initialScanProgress(),
   };
 
   await upsertApp(app);
 
-  const scan = await runScanPipeline({
-    filePath,
-    buffer,
-    fileName: file.name,
-  });
-
-  app = {
-    ...app,
-    scan,
-    status: statusFromReport(scan),
-    updatedAt: new Date().toISOString(),
-  };
-  await upsertApp(app);
-
-  return NextResponse.json({ app });
+  // Scan runs separately so UI can show live per-engine progress
+  return NextResponse.json({ app, scanRequired: true });
 }

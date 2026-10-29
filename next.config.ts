@@ -11,8 +11,10 @@ const nextConfig: NextConfig = {
   },
   experimental: {
     serverActions: {
-      bodySizeLimit: "64mb",
+      // Allow large installers (e.g. 200MB .exe)
+      bodySizeLimit: "512mb",
     },
+    proxyClientMaxBodySize: "512mb",
   },
 };
 
