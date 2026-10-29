@@ -163,7 +163,9 @@ export interface StoreApp {
   iconHue: number;
   /** Custom app avatar (/api/media/...) */
   iconUrl?: string;
-  /** SHA-256 of owner manage key — never expose to clients */
+  /** Browser developer id of the uploader — never expose to clients */
+  ownerId?: string;
+  /** @deprecated removed — kept optional for old store.json cleanup */
   ownerKeyHash?: string;
   scan?: ScanReport;
   scanProgress?: ScanProgress;

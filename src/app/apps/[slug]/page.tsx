@@ -1,7 +1,8 @@
 import Link from "next/link";
+import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { AppDetail } from "@/components/app-detail";
-import { toPublicApp } from "@/lib/owner-auth";
+import { isAppOwner, toPublicApp } from "@/lib/owner-auth";
 import { getAppBySlug, listApps } from "@/lib/store";
 
 export default async function AppPage({
@@ -16,11 +17,15 @@ export default async function AppPage({
   const app = await getAppBySlug(slug);
   if (!app) notFound();
 
+  const cookie = (await headers()).get("cookie");
+  const owner = isAppOwner(app, cookie);
+  const canClaim = !app.ownerId;
+
   const forceScanning = sp.scanning === "1";
   const related = (await listApps({ status: "published" }))
     .filter((a) => a.id !== app.id)
     .slice(0, 4)
-    .map(toPublicApp);
+    .map((a) => toPublicApp(a));
 
   return (
     <main className="flex-1 pb-16 pt-6 md:pt-8">
@@ -34,9 +39,10 @@ export default async function AppPage({
 
         <div className="mt-5">
           <AppDetail
-            app={toPublicApp(app)}
+            app={toPublicApp(app, { isOwner: owner })}
             related={related}
             forceScanning={forceScanning}
+            showManage={owner || canClaim}
           />
         </div>
       </div>

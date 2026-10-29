@@ -16,10 +16,13 @@ export function AppDetail({
   app,
   related,
   forceScanning,
+  showManage = false,
 }: {
   app: PublicStoreApp;
   related: PublicStoreApp[];
   forceScanning?: boolean;
+  /** Only the uploader (or claimable legacy app) sees manage */
+  showManage?: boolean;
 }) {
   const features = app.features ?? [];
   const shots = app.screenshots ?? [];
@@ -89,12 +92,14 @@ export function AppDetail({
                 Сайт
               </a>
             )}
-            <Link
-              href={`/apps/${app.slug}/edit`}
-              className="btn-secondary !h-10 !px-5 !text-[14px]"
-            >
-              Управление
-            </Link>
+            {showManage && (
+              <Link
+                href={`/apps/${app.slug}/edit`}
+                className="btn-secondary !h-10 !px-5 !text-[14px]"
+              >
+                {app.isOwner ? "Управление" : "Это моё?"}
+              </Link>
+            )}
             <span className="ml-1 text-[12px] tabular-nums text-ink-3">
               v{app.version} · {formatBytes(app.fileSize)} ·{" "}
               {formatNumber(app.downloads)} загрузок

@@ -4,10 +4,10 @@ import Link from "next/link";
 
 export function DashboardAppActions({
   slug,
+  label = "Управление",
 }: {
-  appId: string;
   slug: string;
-  name: string;
+  label?: string;
 }) {
   return (
     <div className="flex items-center gap-2">
@@ -15,7 +15,7 @@ export function DashboardAppActions({
         href={`/apps/${slug}/edit`}
         className="btn-get !h-8 !min-w-0 !px-3 !text-[12px]"
       >
-        Управление
+        {label}
       </Link>
     </div>
   );

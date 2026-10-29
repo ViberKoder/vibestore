@@ -14,5 +14,5 @@ export async function GET(req: Request) {
     | "all";
 
   const apps = await listApps({ q, status });
-  return NextResponse.json({ apps: apps.map(toPublicApp) });
+  return NextResponse.json({ apps: apps.map((a) => toPublicApp(a)) });
 }

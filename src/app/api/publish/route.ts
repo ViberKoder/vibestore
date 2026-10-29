@@ -7,8 +7,9 @@ import { NextResponse } from "next/server";
 import { createHash, randomBytes } from "crypto";
 import { initialScanProgress } from "@/lib/scanners/pipeline";
 import {
-  hashOwnerKey,
-  mintOwnerKey,
+  developerCookieHeader,
+  mintDeveloperId,
+  readDeveloperId,
   toPublicApp,
 } from "@/lib/owner-auth";
 import { listApps, mediaDirFor, uploadPathFor, upsertApp } from "@/lib/store";
@@ -253,7 +254,10 @@ export async function POST(req: Request) {
     }
   }
 
-  const ownerKey = mintOwnerKey();
+  let ownerId = readDeveloperId(req.headers.get("cookie"));
+  const mintCookie = !ownerId;
+  if (!ownerId) ownerId = mintDeveloperId();
+
   const now = new Date().toISOString();
   const app: StoreApp = {
     id,
@@ -281,16 +285,18 @@ export async function POST(req: Request) {
     downloads: 0,
     iconHue: Math.floor(Math.random() * 360),
     iconUrl,
-    ownerKeyHash: hashOwnerKey(ownerKey),
+    ownerId,
     scanProgress: initialScanProgress(),
   };
 
   await upsertApp(app);
 
-  // ownerKey is returned ONCE — store only the hash afterwards
-  return NextResponse.json({
-    app: toPublicApp(app),
-    ownerKey,
+  const res = NextResponse.json({
+    app: toPublicApp(app, { isOwner: true }),
     scanRequired: true,
   });
+  if (mintCookie) {
+    res.headers.append("Set-Cookie", developerCookieHeader(ownerId));
+  }
+  return res;
 }

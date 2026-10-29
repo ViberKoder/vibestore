@@ -5,7 +5,7 @@ import { useState } from "react";
 import { formatBytes } from "@/lib/format";
 import { MAX_UPLOAD_BYTES } from "@/lib/types";
 
-type Phase = "idle" | "uploading" | "key_reveal" | "starting_scan";
+type Phase = "idle" | "uploading" | "starting_scan";
 
 export function PublishForm() {
   const router = useRouter();
@@ -13,10 +13,6 @@ export function PublishForm() {
   const [phase, setPhase] = useState<Phase>("idle");
   const [uploadPct, setUploadPct] = useState(0);
   const [fileLabel, setFileLabel] = useState<string | null>(null);
-  const [ownerKey, setOwnerKey] = useState<string | null>(null);
-  const [slug, setSlug] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
-  const [ack, setAck] = useState(false);
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -41,87 +37,21 @@ export function PublishForm() {
 
     try {
       const json = await uploadWithProgress(data, (pct) => setUploadPct(pct));
-      if (json.error || !json.app?.slug || !json.ownerKey) {
+      if (json.error || !json.app?.slug) {
         setError(json.error ?? "Ошибка публикации");
         setPhase("idle");
         return;
       }
+      setPhase("starting_scan");
       setUploadPct(100);
-      setOwnerKey(json.ownerKey);
-      setSlug(json.app.slug);
-      setPhase("key_reveal");
+      router.push(`/apps/${json.app.slug}?scanning=1`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Сеть недоступна");
       setPhase("idle");
     }
   }
 
-  async function copyKey() {
-    if (!ownerKey) return;
-    try {
-      await navigator.clipboard.writeText(ownerKey);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      setCopied(false);
-    }
-  }
-
-  function continueToScan() {
-    if (!slug || !ack) return;
-    setPhase("starting_scan");
-    router.push(`/apps/${slug}?scanning=1`);
-  }
-
-  if (phase === "key_reveal" && ownerKey) {
-    return (
-      <div className="space-y-5 rounded-2xl border border-[var(--line)] bg-surface px-5 py-6">
-        <div>
-          <p className="text-[12px] font-semibold uppercase tracking-[0.12em] text-amber-ink">
-            Сохраните ключ сейчас
-          </p>
-          <h2 className="mt-2 text-[22px] font-bold tracking-[-0.03em]">
-            Ключ владельца
-          </h2>
-          <p className="mt-2 text-[14px] leading-relaxed text-ink-2">
-            Без этого ключа никто (включая нас) не сможет менять или удалить
-            приложение. Он показывается <strong>один раз</strong>.
-          </p>
-        </div>
-        <div className="rounded-xl bg-bg px-3.5 py-3">
-          <code className="block break-all font-mono text-[13px] text-ink">
-            {ownerKey}
-          </code>
-          <button
-            type="button"
-            onClick={copyKey}
-            className="btn-get mt-3 !h-8 !min-w-0 !px-3 !text-[12px]"
-          >
-            {copied ? "Скопировано" : "Копировать ключ"}
-          </button>
-        </div>
-        <label className="flex items-start gap-2.5 text-[13px] text-ink-2">
-          <input
-            type="checkbox"
-            checked={ack}
-            onChange={(e) => setAck(e.target.checked)}
-            className="mt-0.5"
-          />
-          <span>Я сохранил ключ в надёжном месте и понимаю, что восстановить его нельзя.</span>
-        </label>
-        <button
-          type="button"
-          disabled={!ack}
-          onClick={continueToScan}
-          className="btn-primary disabled:opacity-50"
-        >
-          Дальше — к сканированию
-        </button>
-      </div>
-    );
-  }
-
-  const busy = phase === "uploading" || phase === "starting_scan";
+  const busy = phase !== "idle";
 
   return (
     <form onSubmit={onSubmit} className="space-y-5">
@@ -202,10 +132,6 @@ export function PublishForm() {
             "Быстрый поиск | Находит файлы за миллисекунды\nОфлайн-режим\nТёмная тема | Автопереключение"
           }
         />
-        <p className="text-[12px] text-ink-3">
-          Формат: <code className="text-[11px]">Заголовок | детали</code> или
-          просто заголовок. До 12 пунктов.
-        </p>
       </label>
 
       <label className="block space-y-2">
@@ -218,10 +144,6 @@ export function PublishForm() {
             disabled={busy}
             className="block w-full text-[13px] text-ink-2 file:mr-3 file:rounded-full file:border-0 file:bg-blue-soft file:px-4 file:py-2 file:text-[13px] file:font-semibold file:text-blue"
           />
-          <p className="mt-2 text-[12px] text-ink-3">
-            Квадратное PNG/JPEG/WebP · до 8 МБ. Если не задать — будет буква на
-            градиенте.
-          </p>
         </div>
       </label>
 
@@ -238,9 +160,6 @@ export function PublishForm() {
             disabled={busy}
             className="block w-full text-[13px] text-ink-2 file:mr-3 file:rounded-full file:border-0 file:bg-blue-soft file:px-4 file:py-2 file:text-[13px] file:font-semibold file:text-blue"
           />
-          <p className="mt-2 text-[12px] text-ink-3">
-            До 8 изображений · PNG/JPEG/WebP · до 8 МБ каждое.
-          </p>
         </div>
       </label>
 
@@ -259,8 +178,8 @@ export function PublishForm() {
             className="block w-full text-[13px] text-ink-2 file:mr-3 file:rounded-full file:border-0 file:bg-blue-soft file:px-4 file:py-2 file:text-[13px] file:font-semibold file:text-blue"
           />
           <p className="mt-3 text-[12px] text-ink-3">
-            До {Math.round(MAX_UPLOAD_BYTES / 1024 / 1024)} МБ. После загрузки
-            вы получите ключ владельца, затем откроется скан.
+            До {Math.round(MAX_UPLOAD_BYTES / 1024 / 1024)} МБ. Этот браузер
+            запомнится как владелец — только вы увидите «Управление».
           </p>
           {fileLabel && (
             <p className="mt-2 text-[13px] font-medium text-ink">{fileLabel}</p>
@@ -268,11 +187,13 @@ export function PublishForm() {
         </div>
       </label>
 
-      {busy && phase === "uploading" && (
+      {busy && (
         <div className="rounded-2xl border border-blue/20 bg-blue-soft px-4 py-4">
           <div className="flex items-center justify-between gap-3">
             <p className="text-[14px] font-semibold text-ink">
-              Загрузка файла на сервер…
+              {phase === "uploading"
+                ? "Загрузка файла на сервер…"
+                : "Открываем экран сканирования…"}
             </p>
             <span className="text-[20px] font-bold tabular-nums text-blue">
               {uploadPct}%
@@ -307,14 +228,11 @@ export function PublishForm() {
 function uploadWithProgress(
   data: FormData,
   onProgress: (pct: number) => void,
-): Promise<{
-  app?: { slug: string; id: string };
-  ownerKey?: string;
-  error?: string;
-}> {
+): Promise<{ app?: { slug: string; id: string }; error?: string }> {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open("POST", "/api/publish");
+    xhr.withCredentials = true;
     xhr.upload.onprogress = (ev) => {
       if (!ev.lengthComputable) return;
       onProgress(Math.max(1, Math.round((ev.loaded / ev.total) * 100)));
@@ -323,7 +241,6 @@ function uploadWithProgress(
       try {
         const json = JSON.parse(xhr.responseText) as {
           app?: { slug: string; id: string };
-          ownerKey?: string;
           error?: string;
         };
         if (xhr.status >= 400) {

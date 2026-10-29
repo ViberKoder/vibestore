@@ -1,12 +1,11 @@
 import { NextResponse } from "next/server";
 import {
-  ownerSessionCookie,
-  setOwnerCookieHeader,
-  verifyOwnerKey,
-  verifyOwnerSession,
-  clearOwnerSessionCookie,
+  developerCookieHeader,
+  isAppOwner,
+  mintDeveloperId,
+  readDeveloperId,
 } from "@/lib/owner-auth";
-import { getAppById, getAppBySlug } from "@/lib/store";
+import { getAppById, getAppBySlug, patchApp } from "@/lib/store";
 
 export const runtime = "nodejs";
 
@@ -14,7 +13,7 @@ async function resolveApp(id: string) {
   return (await getAppById(id)) ?? (await getAppBySlug(id));
 }
 
-/** Check whether the current browser already has an owner session. */
+/** Who am I for this app — owner / can claim / stranger. */
 export async function GET(
   req: Request,
   ctx: { params: Promise<{ id: string }> },
@@ -24,14 +23,22 @@ export async function GET(
   if (!app) {
     return NextResponse.json({ error: "App not found" }, { status: 404 });
   }
-  const unlocked = await verifyOwnerSession(
-    app.id,
-    req.headers.get("cookie"),
-  );
-  return NextResponse.json({ unlocked, appId: app.id, slug: app.slug });
+  const cookie = req.headers.get("cookie");
+  const isOwner = isAppOwner(app, cookie);
+  const canClaim = !app.ownerId;
+  return NextResponse.json({
+    appId: app.id,
+    slug: app.slug,
+    isOwner,
+    canClaim,
+    hasOwner: Boolean(app.ownerId),
+  });
 }
 
-/** Unlock management with the one-time owner key. */
+/**
+ * Claim an app that has no owner yet (uploaded before ownership tracking).
+ * Binds it to the current browser developer cookie.
+ */
 export async function POST(
   req: Request,
   ctx: { params: Promise<{ id: string }> },
@@ -42,48 +49,37 @@ export async function POST(
     return NextResponse.json({ error: "App not found" }, { status: 404 });
   }
 
-  const body = (await req.json().catch(() => null)) as {
-    ownerKey?: string;
-  } | null;
-  const ownerKey = body?.ownerKey?.trim() ?? "";
-
-  if (!app.ownerKeyHash) {
+  if (app.ownerId) {
+    if (isAppOwner(app, req.headers.get("cookie"))) {
+      return NextResponse.json({ ok: true, isOwner: true, already: true });
+    }
     return NextResponse.json(
-      { error: "У приложения ещё нет ключа владельца" },
-      { status: 400 },
+      { error: "Приложение уже привязано к другому браузеру" },
+      { status: 403 },
     );
   }
 
-  if (!verifyOwnerKey(ownerKey, app.ownerKeyHash)) {
-    return NextResponse.json(
-      { error: "Неверный ключ владельца" },
-      { status: 401 },
-    );
+  let devId = readDeveloperId(req.headers.get("cookie"));
+  const setCookie = !devId;
+  if (!devId) devId = mintDeveloperId();
+
+  const updated = await patchApp(app.id, {
+    ownerId: devId,
+    ownerKeyHash: undefined,
+  });
+  if (!updated) {
+    return NextResponse.json({ error: "Claim failed" }, { status: 500 });
   }
 
-  const cookie = await ownerSessionCookie(app.id);
   const res = NextResponse.json({
     ok: true,
-    unlocked: true,
+    isOwner: true,
+    claimed: true,
     appId: app.id,
     slug: app.slug,
   });
-  res.headers.append("Set-Cookie", setOwnerCookieHeader(cookie));
-  return res;
-}
-
-/** Drop the owner session cookie. */
-export async function DELETE(
-  _req: Request,
-  ctx: { params: Promise<{ id: string }> },
-) {
-  const { id } = await ctx.params;
-  const app = await resolveApp(id);
-  if (!app) {
-    return NextResponse.json({ error: "App not found" }, { status: 404 });
+  if (setCookie) {
+    res.headers.append("Set-Cookie", developerCookieHeader(devId));
   }
-  const cookie = clearOwnerSessionCookie(app.id);
-  const res = NextResponse.json({ ok: true, unlocked: false });
-  res.headers.append("Set-Cookie", setOwnerCookieHeader(cookie));
   return res;
 }

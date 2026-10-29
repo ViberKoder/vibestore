@@ -1,8 +1,9 @@
 import Link from "next/link";
+import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { AppEditForm } from "@/components/app-edit-form";
 import { OwnerGate } from "@/components/owner-gate";
-import { toPublicApp } from "@/lib/owner-auth";
+import { isAppOwner, toPublicApp } from "@/lib/owner-auth";
 import { getAppBySlug } from "@/lib/store";
 
 export default async function EditAppPage({
@@ -13,7 +14,10 @@ export default async function EditAppPage({
   const { slug } = await params;
   const app = await getAppBySlug(slug);
   if (!app) notFound();
-  const publicApp = toPublicApp(app);
+
+  const cookie = (await headers()).get("cookie");
+  const owner = isAppOwner(app, cookie);
+  const publicApp = toPublicApp(app, { isOwner: owner });
 
   return (
     <main className="flex-1 pb-16 pt-6 md:pt-8">
@@ -28,8 +32,7 @@ export default async function EditAppPage({
           Управление
         </h1>
         <p className="mt-2 text-[14px] text-ink-2">
-          Доступ только по ключу владельца. Аватарка, описание, версия,
-          скриншоты или новая сборка.
+          Доступно только с браузера, с которого загрузили приложение.
         </p>
         <div className="mt-8 surface-card px-5 py-6 md:px-7 md:py-7">
           <OwnerGate appId={app.id} appName={app.name}>

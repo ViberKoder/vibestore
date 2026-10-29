@@ -1,12 +1,17 @@
 import Link from "next/link";
+import { headers } from "next/headers";
 import { AppIcon } from "@/components/app-icon";
 import { DashboardAppActions } from "@/components/dashboard-app-actions";
 import { SafetyBadge } from "@/components/safety-badge";
 import { formatNumber } from "@/lib/format";
+import { isAppOwner } from "@/lib/owner-auth";
 import { listApps } from "@/lib/store";
 
 export default async function DashboardPage() {
-  const apps = await listApps({ status: "all" });
+  const cookie = (await headers()).get("cookie");
+  const all = await listApps({ status: "all" });
+  const apps = all.filter((a) => isAppOwner(a, cookie));
+  const unclaimedExist = all.some((a) => !a.ownerId);
 
   return (
     <main className="flex-1 pb-20 pt-8 md:pt-12">
@@ -20,8 +25,8 @@ export default async function DashboardPage() {
               Ваши приложения
             </h1>
             <p className="mt-3 max-w-xl text-[16px] text-ink-2">
-              Управление приложением — только с ключом владельца, выданным при
-              публикации.
+              Здесь только то, что загрузили с этого браузера. Чужие сборки не
+              показываем.
             </p>
           </div>
           <Link href="/publish" className="btn-primary shrink-0">
@@ -40,10 +45,17 @@ export default async function DashboardPage() {
           </div>
           {apps.length === 0 && (
             <p className="px-5 py-10 text-center text-[14px] text-ink-2">
-              Пока пусто.{" "}
+              С этого браузера пока ничего не загружали.{" "}
               <Link href="/publish" className="font-semibold text-blue">
-                Опубликуйте первое приложение
+                Опубликовать
               </Link>
+              {unclaimedExist && (
+                <>
+                  {" "}
+                  Старые сборки без владельца: откройте карточку приложения и
+                  нажмите «Это моё?».
+                </>
+              )}
             </p>
           )}
           {apps.map((app) => (
@@ -76,7 +88,7 @@ export default async function DashboardPage() {
                 {formatNumber(app.downloads)}
               </div>
               <div className="md:justify-self-end">
-                <DashboardAppActions appId={app.id} slug={app.slug} name={app.name} />
+                <DashboardAppActions slug={app.slug} />
               </div>
             </div>
           ))}

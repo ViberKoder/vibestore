@@ -1,11 +1,6 @@
 import { promises as fs } from "fs";
 import path from "path";
 import { connection } from "next/server";
-import {
-  hashOwnerKey,
-  mintOwnerKey,
-  rememberLegacyOwnerKey,
-} from "./owner-auth";
 import { DB_PATH, DATA_DIR, MEDIA_DIR, UPLOADS_DIR } from "./paths";
 import type { ScanProgress, StoreApp, StoreDatabase } from "./types";
 import { seedApps } from "./seed";
@@ -19,23 +14,10 @@ async function ensureDirs() {
 function normalizeApp(app: StoreApp): StoreApp {
   return {
     ...app,
+    ownerKeyHash: undefined,
     features: Array.isArray(app.features) ? app.features : [],
     screenshots: Array.isArray(app.screenshots) ? app.screenshots : [],
   };
-}
-
-/** Ensure every app has an owner key hash; legacy apps get keys saved once. */
-async function ensureOwnerKeys(db: StoreDatabase): Promise<StoreDatabase> {
-  let changed = false;
-  for (const app of db.apps) {
-    if (app.ownerKeyHash) continue;
-    const key = mintOwnerKey();
-    app.ownerKeyHash = hashOwnerKey(key);
-    await rememberLegacyOwnerKey(app.id, app.slug, key);
-    changed = true;
-  }
-  if (changed) await writeDb(db);
-  return db;
 }
 
 async function readDb(): Promise<StoreDatabase> {
@@ -43,8 +25,7 @@ async function readDb(): Promise<StoreDatabase> {
   await ensureDirs();
   try {
     const raw = await fs.readFile(DB_PATH, "utf8");
-    const db = JSON.parse(raw) as StoreDatabase;
-    return ensureOwnerKeys(db);
+    return JSON.parse(raw) as StoreDatabase;
   } catch {
     const seeded: StoreDatabase = { apps: seedApps() };
     await writeDb(seeded);
