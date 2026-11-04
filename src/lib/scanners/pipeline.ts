@@ -15,7 +15,7 @@ import {
   runPrivacyAuditor,
   runSecretsAuditor,
 } from "./audit";
-import { runClamAv, runClamWin } from "./clamav";
+import { runClamSuite } from "./clamav";
 import {
   runEntropyScanner,
   runNetworkSink,
@@ -122,6 +122,7 @@ export async function runScanPipeline(opts: {
     displayName: e.displayName,
     phase: "pending",
   }));
+  const indexOf = new Map(SCAN_ENGINE_ORDER.map((e, i) => [e.scanner, i]));
 
   const notify = async (current?: ScannerId, label?: string) => {
     if (!opts.onProgress) return;
@@ -130,49 +131,68 @@ export async function runScanPipeline(opts: {
 
   await notify(undefined, "Запуск Vibe Audit + антивирусов…");
 
-  // Order MUST match SCAN_ENGINE_ORDER
-  const runners: Array<() => Promise<EngineResult>> = [
-    () => runClamAv(opts.filePath, opts.buffer, opts.fileName),
-    () => runClamWin(opts.filePath, opts.buffer, opts.fileName),
-    () => runVirusTotal(opts.buffer, opts.fileName),
-    () => runVibeGuard(opts.buffer, opts.fileName),
-    () => runEntropyScanner(opts.buffer),
-    () => runPeInspector(opts.buffer, opts.fileName),
-    () => runNetworkSink(opts.buffer),
-    () => runWebStatic(opts.buffer, opts.fileName),
-    () => runSecretsAuditor(opts.buffer, opts.fileName),
-    () => runElectronHardening(opts.buffer, opts.fileName),
-    () => runPrivacyAuditor(opts.buffer),
-    () => runIntegrityAuditor(opts.buffer, opts.fileName),
-    () => runDeviceFootprint(opts.buffer, opts.fileName),
+  // Independent engines run concurrently. I/O-bound work (clamd, VirusTotal
+  // polling) overlaps with the CPU-bound heuristics instead of queueing behind
+  // them. Each task reports one or more engine results.
+  const tasks: Array<{
+    scanners: ScannerId[];
+    run: () => Promise<EngineResult[]>;
+  }> = [
+    {
+      scanners: ["clamav", "clamwin"],
+      run: () => runClamSuite(opts.filePath, opts.fileName),
+    },
+    { scanners: ["virustotal"], run: async () => [await runVirusTotal(opts.buffer, opts.fileName)] },
+    { scanners: ["vibeguard"], run: async () => [await runVibeGuard(opts.buffer, opts.fileName)] },
+    { scanners: ["entropy"], run: async () => [await runEntropyScanner(opts.buffer)] },
+    { scanners: ["pe-inspector"], run: async () => [await runPeInspector(opts.buffer, opts.fileName)] },
+    { scanners: ["network-sink"], run: async () => [await runNetworkSink(opts.buffer)] },
+    { scanners: ["web-static"], run: async () => [await runWebStatic(opts.buffer, opts.fileName)] },
+    { scanners: ["secrets"], run: async () => [await runSecretsAuditor(opts.buffer, opts.fileName)] },
+    { scanners: ["electron-hardening"], run: async () => [await runElectronHardening(opts.buffer, opts.fileName)] },
+    { scanners: ["privacy"], run: async () => [await runPrivacyAuditor(opts.buffer)] },
+    { scanners: ["integrity"], run: async () => [await runIntegrityAuditor(opts.buffer, opts.fileName)] },
+    { scanners: ["device-footprint"], run: async () => [await runDeviceFootprint(opts.buffer, opts.fileName)] },
   ];
 
-  const results: EngineResult[] = [];
-
-  for (let i = 0; i < runners.length; i++) {
-    const meta = SCAN_ENGINE_ORDER[i];
-    track[i] = {
-      ...track[i],
-      phase: "running",
-      startedAt: new Date().toISOString(),
-    };
-    await notify(meta.scanner, `Сканирует: ${meta.displayName}…`);
-
-    const result = await runners[i]();
-    results.push(result);
-
-    track[i] = {
-      ...track[i],
-      phase: "done",
-      verdict: result.verdict,
-      summary: result.summary,
-      finishedAt: new Date().toISOString(),
-    };
-    await notify(
-      undefined,
-      `${meta.displayName}: ${result.verdict.toUpperCase()}`,
-    );
+  const byScanner = new Map<ScannerId, EngineResult>();
+  for (const id of tasks.flatMap((t) => t.scanners)) {
+    const i = indexOf.get(id);
+    if (i !== undefined) {
+      track[i] = { ...track[i], phase: "running", startedAt: new Date().toISOString() };
+    }
   }
+  await notify(undefined, "Сканирование: движки запущены параллельно…");
+
+  await Promise.all(
+    tasks.map(async (task) => {
+      const outputs = await task.run();
+      for (const result of outputs) {
+        byScanner.set(result.scanner, result);
+        const i = indexOf.get(result.scanner);
+        if (i === undefined) continue;
+        track[i] = {
+          ...track[i],
+          phase: "done",
+          verdict: result.verdict,
+          summary: result.summary,
+          finishedAt: new Date().toISOString(),
+        };
+      }
+      const last = outputs[outputs.length - 1];
+      await notify(
+        undefined,
+        `${last.displayName}: ${last.verdict.toUpperCase()}`,
+      );
+    }),
+  );
+
+  // Keep results in canonical engine order (report UI and pillars rely on it).
+  const results: EngineResult[] = SCAN_ENGINE_ORDER.map((e) => {
+    const r = byScanner.get(e.scanner);
+    if (!r) throw new Error(`Engine ${e.scanner} produced no result`);
+    return r;
+  });
 
   return finalizeReport(
     results,

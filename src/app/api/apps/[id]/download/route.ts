@@ -1,4 +1,5 @@
-import { promises as fs } from "fs";
+import { promises as fs, createReadStream } from "fs";
+import { Readable } from "stream";
 import { NextResponse } from "next/server";
 import { bumpDownloads, getAppById, getAppBySlug } from "@/lib/store";
 
@@ -29,16 +30,23 @@ export async function GET(
   await bumpDownloads(app.id);
 
   if (app.filePath) {
+    // Stream from disk instead of buffering up to 512 MB in memory per request.
     try {
-      const buf = await fs.readFile(app.filePath);
-      return new NextResponse(buf, {
-        headers: {
-          "Content-Type": app.mimeType || "application/octet-stream",
-          "Content-Disposition": `attachment; filename="${app.fileName}"`,
-          "X-VibeStore-SHA256": app.sha256,
-          "X-VibeStore-Score": String(app.scan?.securityScore ?? ""),
-        },
-      });
+      const stat = await fs.stat(app.filePath);
+      if (stat.isFile()) {
+        const body = Readable.toWeb(
+          createReadStream(app.filePath),
+        ) as unknown as ReadableStream<Uint8Array>;
+        return new NextResponse(body, {
+          headers: {
+            "Content-Type": app.mimeType || "application/octet-stream",
+            "Content-Length": String(stat.size),
+            "Content-Disposition": `attachment; filename="${app.fileName}"`,
+            "X-VibeStore-SHA256": app.sha256,
+            "X-VibeStore-Score": String(app.scan?.securityScore ?? ""),
+          },
+        });
+      }
     } catch {
       /* fall through to demo payload */
     }

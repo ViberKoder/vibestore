@@ -40,3 +40,31 @@ npm run dev
 ```
 
 Данные: `data/store.json`, загрузки — `data/uploads/`. Фейковых seed-приложений нет.
+
+## Деплой на Railway
+
+В репозитории есть `Dockerfile` и `railway.json`: Railway соберёт образ сам (Nixpacks не подойдёт — нужен нативный ClamAV).
+
+1. **New Project → Deploy from GitHub repo** и выберите этот репозиторий.
+2. **Variables** сервиса:
+   - `VIRUSTOTAL_API_KEY` — ключ из https://www.virustotal.com/gui/my-apikey (без него VirusTotal-движок вернёт ошибку и сборки не публикуются).
+   - `VIBE_DATA_DIR=/data` — уже задан в образе, менять не нужно.
+3. **Volume** (обязательно): Service → Settings → Volumes → добавьте том с mount path **`/data`**. Без него `store.json`, загрузки и иконки пропадут при каждом деплое.
+4. **Replicas: 1.** Хранилище — JSON-файл на диске одного инстанса, несколько реплик не поддерживаются.
+5. Память: берите не меньше 2 GB. `clamd` держит базу сигнатур в RAM (несколько сотен МБ), а крупные сборки (до 512 МБ) читаются при скане.
+
+Что делает entrypoint (`scripts/railway-entrypoint.sh`): при старте подтягивает сигнатуры ClamAV (если их нет), запускает `clamd` и фоновый `freshclam -d` для обновлений, затем стартует Next.js на `$PORT`. Если `clamd` не поднялся, сканы идут через `clamscan` (медленнее, но корректно). `SKIP_CLAMAV=1` отключает ClamAV целиком — тогда ClamAV-движки будут сообщать об ошибке.
+
+Health check: `GET /api/health`.
+
+### Переменные окружения
+
+| Переменная | Назначение | По умолчанию |
+| --- | --- | --- |
+| `VIRUSTOTAL_API_KEY` | ключ VirusTotal Public API | — |
+| `VIBE_DATA_DIR` | каталог данных (store.json, uploads, media) | `./data` (в образе `/data`) |
+| `PORT` | порт HTTP (Railway задаёт сам) | `3000` |
+| `SKIP_CLAMAV` | `1` — не запускать ClamAV | `0` |
+
+Локальный запуск Docker-образа: `docker build -t vibestore . && docker run -p 3000:3000 -v "$PWD/.vibe-data:/data" -e VIRUSTOTAL_API_KEY=... vibestore`.
+

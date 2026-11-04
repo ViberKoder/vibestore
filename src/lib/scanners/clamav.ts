@@ -4,74 +4,129 @@ import type { EngineResult, ThreatFinding } from "../types";
 
 const execFileAsync = promisify(execFile);
 
-async function findClamscan(): Promise<string | null> {
-  for (const bin of ["clamscan", "clamdscan"]) {
-    try {
-      await execFileAsync(bin, ["--version"], { timeout: 4000 });
-      return bin;
-    } catch {
-      /* try next */
-    }
-  }
-  return null;
-}
+/**
+ * Native ClamAV, no signature emulation.
+ *
+ * Preferred path: `clamdscan` against a running clamd (signature DB stays loaded
+ * in memory, a scan costs milliseconds of setup). Fallback: `clamscan`, which
+ * reloads the whole database on every invocation and is much slower.
+ *
+ * ClamAV and ClamWin both use the same ClamAV signature DB, so one scan result
+ * is shared between the two engines instead of running the scanner twice.
+ */
 
 type ClamOutcome =
   | { kind: "clean"; engine: string; raw: string }
   | { kind: "infected"; engine: string; signature: string; raw: string }
   | { kind: "error"; engine?: string; message: string };
 
-async function runNativeClam(
-  filePath: string,
-  label: string,
-): Promise<ClamOutcome> {
-  const bin = await findClamscan();
-  if (!bin) {
-    return {
-      kind: "error",
-      message: `${label}: clamscan/clamdscan не установлен — антивирус нельзя обходить эмуляцией.`,
-    };
-  }
+const SCAN_TIMEOUT_MS = 120_000;
 
+type ExecError = {
+  code?: number | string;
+  stdout?: string;
+  stderr?: string;
+  message?: string;
+};
+
+/**
+ * Only a real `<path>: <signature> FOUND` line counts as an infection. A
+ * non-zero exit without that line (e.g. missing DB) is an error, never malware.
+ */
+function parseInfected(out: string, engine: string): ClamOutcome | null {
+  const line = out
+    .split("\n")
+    .map((l) => l.trim())
+    .find((l) => /:\s.+\sFOUND$/i.test(l));
+  if (!line) return null;
+  const signature =
+    line.replace(/^.+:\s*/, "").replace(/\s+FOUND$/i, "").trim() ||
+    "ClamAV detection";
+  return { kind: "infected", engine, signature, raw: line };
+}
+
+/**
+ * Scan through clamd. Returns null when the daemon is not reachable so the
+ * caller can fall back to clamscan. Exit codes: 0 clean, 1 infected, 2 error.
+ */
+async function scanWithClamd(filePath: string): Promise<ClamOutcome | null> {
   try {
     const { stdout, stderr } = await execFileAsync(
-      bin,
-      [
-        "--infected",
-        "--no-summary",
-        "--database=/var/lib/clamav",
-        filePath,
-      ],
-      { timeout: 120_000, maxBuffer: 4_000_000 },
+      "clamdscan",
+      ["--fdpass", "--no-summary", "--infected", filePath],
+      { timeout: SCAN_TIMEOUT_MS, maxBuffer: 4_000_000 },
     );
-    const out = `${stdout}\n${stderr}`.trim();
-    return { kind: "clean", engine: bin, raw: out };
-  } catch (err: unknown) {
-    const e = err as {
-      code?: number | string;
-      stdout?: string;
-      stderr?: string;
-      message?: string;
+    return {
+      kind: "clean",
+      engine: "clamdscan",
+      raw: `${stdout}\n${stderr}`.trim(),
     };
+  } catch (err: unknown) {
+    const e = err as ExecError;
     const out = `${e.stdout ?? ""}\n${e.stderr ?? ""}\n${e.message ?? ""}`;
-    // clamscan exits 1 when infected
-    if (e.code === 1 || /FOUND/i.test(out)) {
-      const line =
-        out
-          .split("\n")
-          .map((l) => l.trim())
-          .find((l) => /FOUND/i.test(l)) ?? out.slice(0, 300);
-      const signature =
-        line.replace(/^.+:\s*/, "").replace(/\s+FOUND.*$/i, "").trim() ||
-        "ClamAV detection";
-      return { kind: "infected", engine: bin, signature, raw: line };
+    if (e.code === 1) {
+      const infected = parseInfected(out, "clamdscan");
+      if (infected) return infected;
+    }
+    // 2 = clamd unreachable / daemon error, ENOENT = clamdscan not installed
+    if (e.code === 2 || e.code === "ENOENT") return null;
+    return {
+      kind: "error",
+      engine: "clamdscan",
+      message: `ClamAV (clamd) failed: ${out.trim().slice(0, 400) || "unknown error"}`,
+    };
+  }
+}
+
+/** Resolved once per process: is a standalone clamscan binary available? */
+let clamscanAvailable: Promise<boolean> | null = null;
+function hasClamscan(): Promise<boolean> {
+  clamscanAvailable ??= execFileAsync("clamscan", ["--version"], {
+    timeout: 4000,
+  }).then(
+    () => true,
+    () => false,
+  );
+  return clamscanAvailable;
+}
+
+async function scanWithClamscan(
+  filePath: string,
+): Promise<ClamOutcome> {
+  if (!(await hasClamscan())) {
+    return {
+      kind: "error",
+      message:
+        "ClamAV DB: clamd и clamscan недоступны — антивирус нельзя обходить эмуляцией.",
+    };
+  }
+  try {
+    const { stdout, stderr } = await execFileAsync(
+      "clamscan",
+      ["--infected", "--no-summary", "--database=/var/lib/clamav", filePath],
+      { timeout: SCAN_TIMEOUT_MS, maxBuffer: 4_000_000 },
+    );
+    return { kind: "clean", engine: "clamscan", raw: `${stdout}\n${stderr}`.trim() };
+  } catch (err: unknown) {
+    const e = err as ExecError;
+    const out = `${e.stdout ?? ""}\n${e.stderr ?? ""}\n${e.message ?? ""}`;
+    // clamscan exits 1 when infected (only trusted with a FOUND line)
+    if (e.code === 1) {
+      const infected = parseInfected(out, "clamscan");
+      if (infected) return infected;
     }
     return {
       kind: "error",
-      engine: bin,
-      message: `${label} failed: ${out.slice(0, 400) || "unknown error"}`,
+      engine: "clamscan",
+      message: `ClamAV DB failed: ${out.trim().slice(0, 400) || "unknown error"}`,
     };
   }
+}
+
+async function runNativeClam(filePath: string): Promise<ClamOutcome> {
+  const viaDaemon = await scanWithClamd(filePath);
+  if (viaDaemon) return viaDaemon;
+  return scanWithClamscan(filePath);
 }
 
 function infectedResult(
@@ -153,69 +208,52 @@ function errorResult(
   };
 }
 
-/** Native ClamAV — no signature emulation bypass. */
-export async function runClamAv(
-  filePath: string,
-  _buf: Buffer,
-  _fileName?: string,
-): Promise<EngineResult> {
-  void _buf;
-  void _fileName;
-  const started = Date.now();
-  const outcome = await runNativeClam(filePath, "ClamAV");
-  if (outcome.kind === "clean") {
-    return cleanResult(
-      "clamav",
-      "ClamAV",
-      started,
-      outcome.engine,
-      "ClamAV (native): известных сигнатур не найдено.",
-    );
-  }
-  if (outcome.kind === "infected") {
-    return infectedResult(
-      "clamav",
-      "ClamAV",
-      started,
-      outcome.signature,
-      outcome.engine,
-    );
-  }
-  return errorResult("clamav", "ClamAV", started, outcome.message);
-}
-
 /**
- * ClamWin uses the same ClamAV signature databases (Windows-oriented product).
- * On this host we run the same native clamscan DB — not a fake pass.
+ * Runs the ClamAV signature scan once and returns both the ClamAV and the
+ * ClamWin engine results (ClamWin is the same DB, reported separately).
  */
-export async function runClamWin(
+export async function runClamSuite(
   filePath: string,
-  _buf: Buffer,
   fileName: string,
-): Promise<EngineResult> {
+): Promise<[EngineResult, EngineResult]> {
   const started = Date.now();
-  const outcome = await runNativeClam(filePath, "ClamWin");
-  const isWindows = /\.(exe|dll|msi|scr|com|cpl)$/i.test(fileName);
+  const outcome = await runNativeClam(filePath);
 
-  if (outcome.kind === "clean") {
-    return cleanResult(
-      "clamwin",
-      "ClamWin (ClamAV DB)",
-      started,
-      outcome.engine,
-      isWindows
-        ? "ClamWin/ClamAV DB (native): Windows-сборка чистая по сигнатурам."
-        : "ClamWin/ClamAV DB (native): сигнатур не найдено.",
-    );
-  }
-  if (outcome.kind === "infected") {
-    return infectedResult(
-      "clamwin",
-      "ClamWin (ClamAV DB)",
-      started,
-      outcome.signature,
-      outcome.engine,
-    );
-  }
-  return errorResult("clamwin", "ClamWin (ClamAV DB)", started, outcome.message);
+  const clamav = (() => {
+    if (outcome.kind === "clean") {
+      return cleanResult(
+        "clamav",
+        "ClamAV",
+        started,
+        outcome.engine,
+        "ClamAV (native): известных сигнатур не найдено.",
+      );
+    }
+    if (outcome.kind === "infected") {
+      return infectedResult("clamav", "ClamAV", started, outcome.signature, outcome.engine);
+    }
+    return errorResult("clamav", "ClamAV", started, outcome.message);
+  })();
+
+  const isWindows = /\.(exe|dll|msi|scr|com|cpl)$/i.test(fileName);
+  const clamwinName = "ClamWin (ClamAV DB)";
+  const clamwin = (() => {
+    if (outcome.kind === "clean") {
+      return cleanResult(
+        "clamwin",
+        clamwinName,
+        started,
+        outcome.engine,
+        isWindows
+          ? "ClamWin/ClamAV DB (native): Windows-сборка чистая по сигнатурам."
+          : "ClamWin/ClamAV DB (native): сигнатур не найдено.",
+      );
+    }
+    if (outcome.kind === "infected") {
+      return infectedResult("clamwin", clamwinName, started, outcome.signature, outcome.engine);
+    }
+    return errorResult("clamwin", clamwinName, started, outcome.message);
+  })();
+
+  return [clamav, clamwin];
 }
