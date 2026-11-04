@@ -55,6 +55,53 @@ function normalizeApp(app: StoreApp): StoreApp {
   };
 }
 
+/**
+ * Upload files are always stored directly in UPLOADS_DIR. Re-anchoring the
+ * stored path on load means a moved data directory (new volume mount path,
+ * different container root) keeps working without a data migration.
+ */
+function reanchorPaths(db: StoreDatabase): void {
+  for (const app of db.apps) {
+    if (app.filePath) {
+      app.filePath = uploadPathFor(path.basename(app.filePath));
+    }
+  }
+}
+
+/**
+ * Apps whose scan was interrupted by a restart must not stay stuck in
+ * "scanning" (downloads would return 409 forever). If a previous scan report
+ * exists, restore the status it implied; otherwise leave "scanning" so the
+ * app page re-runs the scan automatically.
+ */
+function recoverInterruptedScans(db: StoreDatabase): number {
+  let recovered = 0;
+  for (const app of db.apps) {
+    if (app.status !== "scanning" && app.status !== "queued") continue;
+    recovered += 1;
+    if (app.scan) {
+      const readiness = app.scan.readiness;
+      app.status =
+        readiness === "blocked"
+          ? "rejected"
+          : readiness === "needs_fixes"
+            ? "quarantined"
+            : "published";
+    } else {
+      app.status = "scanning";
+    }
+    app.scanProgress = {
+      phase: "error",
+      label: "Сканирование прервано перезапуском — откройте страницу приложения, чтобы повторить",
+      percent: 0,
+      engines: [],
+      error: "interrupted by restart",
+      updatedAt: new Date().toISOString(),
+    };
+  }
+  return recovered;
+}
+
 async function loadDb(): Promise<StoreDatabase> {
   if (state.db) return state.db;
   state.loading ??= (async () => {
@@ -68,10 +115,21 @@ async function loadDb(): Promise<StoreDatabase> {
       // silently replaced by an empty catalog — that would wipe real data.
       if (code !== "ENOENT") throw err;
       db = { apps: seedApps() };
-      state.db = db;
-      await schedulePersist();
+      console.warn(`[store] no store.json at ${DB_PATH}: starting with an empty catalog`);
     }
+    reanchorPaths(db);
+    const recovered = recoverInterruptedScans(db);
     state.db = db;
+    if (recovered > 0) {
+      console.warn(`[store] recovered ${recovered} app(s) with interrupted scans`);
+    }
+    await schedulePersist();
+    const storage = await storageStatus();
+    if (!storage.persistent) {
+      console.error(
+        `[store] WARNING: DATA_DIR ${DATA_DIR} is NOT on a persistent volume — uploads and catalog will be lost on redeploy. Attach a Railway volume (mount path /data).`,
+      );
+    }
     return db;
   })().finally(() => {
     state.loading = null;
@@ -79,8 +137,39 @@ async function loadDb(): Promise<StoreDatabase> {
   return state.loading;
 }
 
+/**
+ * Whether DATA_DIR is on separate storage. On Railway, RAILWAY_VOLUME_MOUNT_PATH
+ * is set when a volume is attached; a mount point also has a different device
+ * id than its parent directory. Used by /api/health and the boot warning.
+ */
+export async function storageStatus(): Promise<{
+  dataDir: string;
+  persistent: boolean;
+  appCount: number | null;
+}> {
+  let persistent = false;
+  try {
+    const [here, parent] = await Promise.all([
+      fs.stat(DATA_DIR),
+      fs.stat(path.dirname(DATA_DIR)),
+    ]);
+    persistent = here.dev !== parent.dev;
+  } catch {
+    persistent = false;
+  }
+  const mount = process.env.RAILWAY_VOLUME_MOUNT_PATH?.trim();
+  if (mount && path.resolve(mount) === DATA_DIR) persistent = true;
+  return {
+    dataDir: DATA_DIR,
+    persistent,
+    appCount: state.db ? state.db.apps.length : null,
+  };
+}
+
 async function writeAtomic(db: StoreDatabase): Promise<void> {
   await ensureDirs();
+  // Keep the previous version as a backup, so one bad write cannot lose the catalog.
+  await fs.copyFile(DB_PATH, `${DB_PATH}.bak`).catch(() => undefined);
   const tmp = `${DB_PATH}.${process.pid}.${Date.now()}.tmp`;
   await fs.writeFile(tmp, JSON.stringify(db), "utf8");
   await fs.rename(tmp, DB_PATH);
