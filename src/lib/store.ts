@@ -1,0 +1,242 @@
+import { promises as fs } from "fs";
+import path from "path";
+import { connection } from "next/server";
+import { DB_PATH, DATA_DIR, MEDIA_DIR, UPLOADS_DIR } from "./paths";
+import type { ScanProgress, StoreApp, StoreDatabase } from "./types";
+import { seedApps } from "./seed";
+
+/**
+ * JSON-backed store with an in-memory cache.
+ *
+ * - The database is read from disk once per process, then served from memory.
+ * - Mutations are applied synchronously to the cache (no interleaving between
+ *   read-modify-write steps) and persisted to disk via an atomic tmp+rename.
+ * - Concurrent persist requests are coalesced into a single write.
+ *
+ * State lives on globalThis because Next.js may bundle route handlers into
+ * separate module instances; a module-level cache would diverge between them.
+ */
+
+interface StoreState {
+  db: StoreDatabase | null;
+  loading: Promise<StoreDatabase> | null;
+  dirsReady: Promise<void> | null;
+  writing: Promise<void> | null;
+  dirty: boolean;
+}
+
+const g = globalThis as typeof globalThis & { __vibeStore?: StoreState };
+const state: StoreState = (g.__vibeStore ??= {
+  db: null,
+  loading: null,
+  dirsReady: null,
+  writing: null,
+  dirty: false,
+});
+
+function ensureDirs(): Promise<void> {
+  state.dirsReady ??= Promise.all(
+    [DATA_DIR, UPLOADS_DIR, MEDIA_DIR].map((d) =>
+      fs.mkdir(d, { recursive: true }),
+    ),
+  ).then(() => undefined).catch((err) => {
+    state.dirsReady = null;
+    throw err;
+  });
+  return state.dirsReady;
+}
+
+function normalizeApp(app: StoreApp): StoreApp {
+  return {
+    ...app,
+    ownerKeyHash: undefined,
+    features: Array.isArray(app.features) ? app.features : [],
+    screenshots: Array.isArray(app.screenshots) ? app.screenshots : [],
+  };
+}
+
+async function loadDb(): Promise<StoreDatabase> {
+  if (state.db) return state.db;
+  state.loading ??= (async () => {
+    await ensureDirs();
+    let db: StoreDatabase;
+    try {
+      db = JSON.parse(await fs.readFile(DB_PATH, "utf8")) as StoreDatabase;
+    } catch (err) {
+      const code = (err as NodeJS.ErrnoException).code;
+      // Only a missing file means "first run". A corrupt file must NOT be
+      // silently replaced by an empty catalog — that would wipe real data.
+      if (code !== "ENOENT") throw err;
+      db = { apps: seedApps() };
+      state.db = db;
+      await schedulePersist();
+    }
+    state.db = db;
+    return db;
+  })().finally(() => {
+    state.loading = null;
+  });
+  return state.loading;
+}
+
+async function writeAtomic(db: StoreDatabase): Promise<void> {
+  await ensureDirs();
+  const tmp = `${DB_PATH}.${process.pid}.${Date.now()}.tmp`;
+  await fs.writeFile(tmp, JSON.stringify(db), "utf8");
+  await fs.rename(tmp, DB_PATH);
+}
+
+/**
+ * Persist the cached database. Calls that arrive while a write is in flight
+ * mark the state dirty and share the same writer loop, so bursts of progress
+ * updates collapse into a handful of disk writes.
+ */
+function schedulePersist(): Promise<void> {
+  state.dirty = true;
+  state.writing ??= (async () => {
+    try {
+      while (state.dirty && state.db) {
+        state.dirty = false;
+        await writeAtomic(state.db);
+      }
+    } finally {
+      state.writing = null;
+    }
+  })();
+  return state.writing;
+}
+
+/** Read-only access to the cached database (never mutate the returned object). */
+async function readOnlyDb(): Promise<StoreDatabase> {
+  await connection();
+  return loadDb();
+}
+
+export async function listApps(opts?: {
+  status?: StoreApp["status"] | "all";
+  q?: string;
+}): Promise<StoreApp[]> {
+  const db = await readOnlyDb();
+  let apps = db.apps.map(normalizeApp).sort(
+    (a, b) => +new Date(b.updatedAt) - +new Date(a.updatedAt),
+  );
+
+  if (opts?.status && opts.status !== "all") {
+    apps = apps.filter((a) => a.status === opts.status);
+  }
+
+  if (opts?.q?.trim()) {
+    const q = opts.q.trim().toLowerCase();
+    apps = apps.filter(
+      (a) =>
+        a.name.toLowerCase().includes(q) ||
+        a.tagline.toLowerCase().includes(q) ||
+        a.developerName.toLowerCase().includes(q) ||
+        a.tags.some((t) => t.toLowerCase().includes(q)) ||
+        a.category.toLowerCase().includes(q),
+    );
+  }
+
+  return apps;
+}
+
+export async function getAppBySlug(slug: string): Promise<StoreApp | null> {
+  const db = await readOnlyDb();
+  const app = db.apps.find((a) => a.slug === slug);
+  return app ? normalizeApp(app) : null;
+}
+
+export async function getAppById(id: string): Promise<StoreApp | null> {
+  const db = await readOnlyDb();
+  const app = db.apps.find((a) => a.id === id);
+  return app ? normalizeApp(app) : null;
+}
+
+export async function upsertApp(app: StoreApp): Promise<StoreApp> {
+  const db = await readOnlyDb();
+  const idx = db.apps.findIndex((a) => a.id === app.id);
+  if (idx >= 0) db.apps[idx] = app;
+  else db.apps.unshift(app);
+  await schedulePersist();
+  return app;
+}
+
+export async function patchApp(
+  id: string,
+  patch: Partial<StoreApp>,
+): Promise<StoreApp | null> {
+  const db = await readOnlyDb();
+  const idx = db.apps.findIndex((a) => a.id === id);
+  if (idx < 0) return null;
+  db.apps[idx] = {
+    ...db.apps[idx],
+    ...patch,
+    updatedAt: new Date().toISOString(),
+  };
+  const updated = { ...db.apps[idx] };
+  await schedulePersist();
+  return updated;
+}
+
+/**
+ * Progress ticks are frequent and only matter to a live poller, so they update
+ * memory immediately and persist in the background (coalesced).
+ */
+export async function updateScanProgress(
+  id: string,
+  scanProgress: ScanProgress,
+): Promise<void> {
+  const db = await readOnlyDb();
+  const idx = db.apps.findIndex((a) => a.id === id);
+  if (idx < 0) return;
+  db.apps[idx] = {
+    ...db.apps[idx],
+    scanProgress,
+    status: "scanning",
+    updatedAt: new Date().toISOString(),
+  };
+  void schedulePersist().catch((err) => {
+    console.error("[store] progress persist failed", err);
+  });
+}
+
+export async function bumpDownloads(id: string): Promise<void> {
+  const db = await readOnlyDb();
+  const app = db.apps.find((a) => a.id === id);
+  if (!app) return;
+  app.downloads += 1;
+  app.updatedAt = new Date().toISOString();
+  void schedulePersist().catch((err) => {
+    console.error("[store] download counter persist failed", err);
+  });
+}
+
+export async function deleteApp(id: string): Promise<boolean> {
+  const db = await readOnlyDb();
+  const idx = db.apps.findIndex((a) => a.id === id);
+  if (idx < 0) return false;
+  const app = db.apps[idx];
+  db.apps.splice(idx, 1);
+  await schedulePersist();
+
+  if (app.filePath) {
+    await fs.unlink(app.filePath).catch(() => undefined);
+  }
+  const mediaDir = mediaDirFor(app.id);
+  await fs.rm(mediaDir, { recursive: true, force: true }).catch(() => undefined);
+  return true;
+}
+
+export function uploadPathFor(fileName: string): string {
+  return path.join(UPLOADS_DIR, fileName);
+}
+
+export function mediaDirFor(appId: string): string {
+  return path.join(MEDIA_DIR, appId);
+}
+
+export function mediaPathFor(appId: string, fileName: string): string {
+  return path.join(MEDIA_DIR, appId, fileName);
+}
+
+export { UPLOADS_DIR, MEDIA_DIR };
