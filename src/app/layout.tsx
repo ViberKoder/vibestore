@@ -3,6 +3,8 @@ import { Manrope } from "next/font/google";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { THEME_BOOT_SCRIPT } from "@/components/theme-toggle";
+import { LocaleProvider } from "@/lib/i18n/client";
+import { getLocale, getT } from "@/lib/i18n/server";
 import "./globals.css";
 
 const manrope = Manrope({
@@ -11,20 +13,25 @@ const manrope = Manrope({
   weight: ["400", "500", "600", "700", "800"],
 });
 
-export const metadata: Metadata = {
-  title: "Vibe Store — безопасный каталог приложений",
-  description:
-    "App Store для вайбкодерских приложений. VirusTotal, ClamAV, ClamWin и VibeGuard проверяют каждую сборку до скачивания.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getT();
+  return {
+    title: t("Vibe Store — a safe app catalog"),
+    description: t(
+      "An app store for vibe-coded apps. VirusTotal, ClamAV, ClamWin and VibeGuard check every build before download.",
+    ),
+  };
+}
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const locale = await getLocale();
   return (
     <html
-      lang="ru"
+      lang={locale}
       className={`${manrope.variable} h-full antialiased`}
       suppressHydrationWarning
     >
@@ -32,9 +39,11 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }} />
       </head>
       <body className="flex min-h-full flex-col bg-bg font-sans text-ink">
-        <SiteHeader />
-        {children}
-        <SiteFooter />
+        <LocaleProvider locale={locale}>
+          <SiteHeader />
+          {children}
+          <SiteFooter />
+        </LocaleProvider>
       </body>
     </html>
   );

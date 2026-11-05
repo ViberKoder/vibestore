@@ -85,24 +85,24 @@ export async function runEntropyScanner(buf: Buffer): Promise<EngineResult> {
       id: "ent-high",
       scanner: "entropy",
       severity: "medium",
-      title: "Высокая энтропия (упаковка / сжатие)",
-      detail: `Shannon entropy ${entropy.toFixed(2)}/8. Часто бывает у установщиков (.exe NSIS/Electron) и у packed malware.`,
+      title: "High entropy (packing / compression)",
+      detail: `Shannon entropy ${entropy.toFixed(2)}/8. Common in installers (.exe NSIS/Electron) and in packed malware.`,
       category: "packed",
       meaning:
-        "Файл почти «случайно» выглядит по байтам — типично для сжатых установщиков. Само по себе это не вирус, но скрывает содержимое от простых сигнатур.",
+        "By bytes the file looks almost «random» — typical for compressed installers. This alone is not a virus, but it hides the content from simple signatures.",
       action:
-        "Если это installer — ожидаемо. Сверьте с VirusTotal/ClamAV. Избегайте лишних packer’ов поверх нормального установщика.",
+        "If this is an installer — expected. Cross-check with VirusTotal/ClamAV. Avoid extra packers on top of a normal installer.",
     });
   } else if (entropy >= 7.2 && buf.length > 4096) {
     findings.push({
       id: "ent-elevated",
       scanner: "entropy",
       severity: "low",
-      title: "Повышенная энтропия",
-      detail: `Entropy ${entropy.toFixed(2)} — сжатые ресурсы или лёгкая упаковка.`,
+      title: "Elevated entropy",
+      detail: `Entropy ${entropy.toFixed(2)} — compressed resources or light packing.`,
       category: "packed",
-      meaning: "Небольшая обфускация/сжатие, обычно безопасно для installers.",
-      action: "Можно игнорировать, если остальные движки чистые.",
+      meaning: "Light obfuscation/compression, usually safe for installers.",
+      action: "Can be ignored if the other engines are clean.",
     });
   }
 

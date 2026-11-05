@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { AppEditForm } from "@/components/app-edit-form";
 import { OwnerGate } from "@/components/owner-gate";
 import { isAppOwner, toPublicApp } from "@/lib/owner-auth";
+import { getT } from "@/lib/i18n/server";
 import { getAppBySlug } from "@/lib/store";
 
 export default async function EditAppPage({
@@ -11,6 +12,7 @@ export default async function EditAppPage({
 }: {
   params: Promise<{ slug: string }>;
 }) {
+  const t = await getT();
   const { slug } = await params;
   const app = await getAppBySlug(slug);
   if (!app) notFound();
@@ -29,11 +31,10 @@ export default async function EditAppPage({
           ← {app.name}
         </Link>
         <h1 className="mt-4 text-[28px] font-extrabold tracking-[-0.04em] md:text-[34px]">
-          Управление
+          {t("Manage")}
         </h1>
         <p className="mt-2 text-[14px] text-ink-2">
-          Привязано к браузеру. Если cookie слетел после смены адреса туннеля —
-          восстановите доступ по имени разработчика с карточки.
+          {t("Linked to this browser. If the cookie was lost after the address changed, restore access with the developer name from the app page.")}
         </p>
         <div className="mt-8 surface-card px-5 py-6 md:px-7 md:py-7">
           <OwnerGate appId={app.id} appName={app.name}>

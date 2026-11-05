@@ -1,5 +1,8 @@
+"use client";
+
 import Link from "next/link";
 import type { StoreApp } from "@/lib/types";
+import { useT } from "@/lib/i18n/client";
 import { AppIcon } from "./app-icon";
 
 export function CollectionCard({
@@ -13,13 +16,14 @@ export function CollectionCard({
   apps: StoreApp[];
   href: string;
 }) {
+  const t = useT();
   return (
     <Link
       href={href}
       className="block w-[280px] rounded-[24px] bg-surface p-5 shadow-[var(--shadow-sm)] transition hover:shadow-[var(--shadow-md)] md:w-[300px]"
     >
       <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-3">
-        Подборка
+        {t("Collection")}
       </p>
       <h3 className="mt-1.5 text-[18px] font-bold tracking-[-0.03em] text-ink">
         {title}

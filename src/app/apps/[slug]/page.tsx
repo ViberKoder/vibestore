@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { AppDetail } from "@/components/app-detail";
 import { isAppOwner, toPublicApp } from "@/lib/owner-auth";
+import { getT } from "@/lib/i18n/server";
 import { getAppBySlug, listApps } from "@/lib/store";
 
 export default async function AppPage({
@@ -12,6 +13,7 @@ export default async function AppPage({
   params: Promise<{ slug: string }>;
   searchParams: Promise<{ scanning?: string }>;
 }) {
+  const t = await getT();
   const { slug } = await params;
   const sp = await searchParams;
   const app = await getAppBySlug(slug);
@@ -34,7 +36,7 @@ export default async function AppPage({
           href="/#catalog"
           className="text-[14px] font-medium text-blue hover:underline"
         >
-          ← Каталог
+          ← {t("Catalog")}
         </Link>
 
         <div className="mt-5">

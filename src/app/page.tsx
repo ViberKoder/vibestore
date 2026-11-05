@@ -6,6 +6,7 @@ import { CollectionCard } from "@/components/collection-card";
 import { FeaturedCard } from "@/components/featured-card";
 import { SectionHeader } from "@/components/section-header";
 import { TrustStrip } from "@/components/trust-strip";
+import { getT } from "@/lib/i18n/server";
 import { listApps } from "@/lib/store";
 import type { StoreApp } from "@/lib/types";
 
@@ -15,6 +16,7 @@ export default async function Home({
   searchParams: Promise<{ q?: string; status?: string }>;
 }) {
   const sp = await searchParams;
+  const t = await getT();
   const q = sp.q ?? "";
   const showAll = sp.status === "all";
 
@@ -38,23 +40,22 @@ export default async function Home({
       <div className="container-store space-y-10 md:space-y-14">
         <section className="fade-up max-w-2xl">
           <p className="text-[13px] font-semibold uppercase tracking-[0.14em] text-ink-3">
-            Discover
+            {t("Discover")}
           </p>
           <h1 className="mt-2 text-[40px] font-extrabold leading-[1.05] tracking-[-0.045em] text-ink md:text-[56px]">
-            Приложения,
-            <br />
-            которым можно доверять.
+            {t("Apps you can trust.")}
           </h1>
           <p className="mt-4 max-w-xl text-[17px] leading-relaxed text-ink-2 md:text-[19px]">
-            Vibe Store — каталог вайбкодерских программ и сайтов. Каждая сборка
-            проходит VirusTotal, ClamAV и собственные проверки до публикации.
+            {t(
+              "Vibe Store is a catalog of vibe-coded programs and websites. Every build goes through VirusTotal, ClamAV and our own checks before it is published.",
+            )}
           </p>
           <div className="mt-7 flex flex-wrap gap-3">
             <Link href={hasApps ? "#catalog" : "/publish"} className="btn-primary">
-              {hasApps ? "Смотреть каталог" : "Опубликовать первое приложение"}
+              {hasApps ? t("Browse the catalog") : t("Publish your first app")}
             </Link>
             <Link href="/publish" className="btn-secondary">
-              Опубликовать приложение
+              {t("Publish an app")}
             </Link>
           </div>
         </section>
@@ -72,28 +73,28 @@ export default async function Home({
         {!q && published.length > 0 && (
           <section>
             <SectionHeader
-              title="Подборки"
-              subtitle="Как в App Store — по смыслу, не по хаосу"
+              title={t("Collections")}
+              subtitle={t("Like the App Store — by meaning, not chaos")}
             />
             <div className="rail">
               <CollectionCard
-                title="Проверено сегодня"
-                subtitle="Сборки с высоким security score"
+                title={t("Verified today")}
+                subtitle={t("Builds with a high security score")}
                 apps={published}
                 href="/#catalog"
               />
               {desktop.length > 0 && (
                 <CollectionCard
-                  title="Для Mac и Windows"
-                  subtitle="Desktop-утилиты и .exe"
+                  title={t("For Mac and Windows")}
+                  subtitle={t("Desktop utilities and .exe")}
                   apps={desktop}
                   href="/?status=all#catalog"
                 />
               )}
               {web.length > 0 && (
                 <CollectionCard
-                  title="Веб-инструменты"
-                  subtitle="Сайты и HTML-утилиты"
+                  title={t("Web tools")}
+                  subtitle={t("Websites and HTML utilities")}
                   apps={web}
                   href="/#catalog"
                 />
@@ -105,8 +106,8 @@ export default async function Home({
         {!q && topCharts.length > 0 && (
           <section>
             <SectionHeader
-              title="Топ чарт"
-              subtitle="Популярные проверенные приложения"
+              title={t("Top chart")}
+              subtitle={t("Popular verified apps")}
             />
             <div className="surface-card px-4 md:px-6">
               <ChartGrid apps={topCharts} />
@@ -118,12 +119,12 @@ export default async function Home({
           <div className="mb-5 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
             <div>
               <h2 className="text-[22px] font-bold tracking-[-0.03em] md:text-[24px]">
-                {q ? `Результаты: «${q}»` : "Каталог"}
+                {q ? `${t("Results for")} «${q}»` : t("Catalog")}
               </h2>
               <p className="mt-1 text-[13px] text-ink-2">
                 {showAll
-                  ? "Все статусы, включая карантин и блокировки"
-                  : "Только сборки со статусом «Проверено»"}
+                  ? t("All statuses, including quarantined and blocked")
+                  : t("Only builds with the «Verified» status")}
               </p>
             </div>
             <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center">
@@ -137,7 +138,7 @@ export default async function Home({
                     !showAll ? "bg-white text-ink shadow-sm" : "text-ink-2"
                   }`}
                 >
-                  Безопасные
+                  {t("Safe")}
                 </Link>
                 <Link
                   href="/?status=all#catalog"
@@ -145,7 +146,7 @@ export default async function Home({
                     showAll ? "bg-white text-ink shadow-sm" : "text-ink-2"
                   }`}
                 >
-                  Все
+                  {t("All")}
                 </Link>
               </div>
             </div>
@@ -155,14 +156,13 @@ export default async function Home({
             {catalog.length === 0 ? (
               <div className="py-16 text-center">
                 <p className="text-[16px] font-semibold text-ink">
-                  Каталог пока пуст
+                  {t("The catalog is empty")}
                 </p>
                 <p className="mt-2 text-[14px] text-ink-2">
-                  Здесь только реальные сборки после проверки. Фейковых
-                  приложений нет.
+                  {t("Only real builds appear here after checks. There are no fake apps.")}
                 </p>
                 <Link href="/publish" className="btn-primary mt-6 inline-flex">
-                  Опубликовать сборку
+                  {t("Publish a build")}
                 </Link>
               </div>
             ) : (
@@ -174,10 +174,10 @@ export default async function Home({
         {!q && caution.length > 0 && (
           <section>
             <SectionHeader
-              title="Отклонённые / на доработке"
-              subtitle="Реальные сборки, которые не прошли проверку"
+              title={t("Rejected / needs work")}
+              subtitle={t("Real builds that did not pass the checks")}
               href="/security"
-              action="Как ловим"
+              action={t("How we catch threats")}
             />
             <div className="surface-card px-4 md:px-6">
               {caution.map((app) => (

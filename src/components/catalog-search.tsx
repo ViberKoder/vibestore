@@ -2,12 +2,14 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useTransition } from "react";
+import { useT } from "@/lib/i18n/client";
 
 export function CatalogSearch({ initialQ = "" }: { initialQ?: string }) {
   const router = useRouter();
   const params = useSearchParams();
   const [q, setQ] = useState(initialQ);
   const [pending, startTransition] = useTransition();
+  const t = useT();
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -35,11 +37,11 @@ export function CatalogSearch({ initialQ = "" }: { initialQ?: string }) {
       <input
         value={q}
         onChange={(e) => setQ(e.target.value)}
-        placeholder="Поиск приложений"
+        placeholder={t("Search apps")}
         className="h-11 w-full rounded-full border-0 bg-black/[0.045] pl-10 pr-4 text-[14px] text-ink outline-none ring-blue/30 placeholder:text-ink-3 focus:bg-white focus:ring-2"
       />
       <button type="submit" className="sr-only" disabled={pending}>
-        Найти
+        {t("Search")}
       </button>
     </form>
   );

@@ -16,38 +16,38 @@ const SECRET_PATTERNS: Array<{
 }> = [
   {
     id: "aws-key",
-    title: "Возможный AWS Access Key",
+    title: "Possible AWS Access Key",
     pattern: /AKIA[0-9A-Z]{16}/g,
     severity: "critical",
   },
   {
     id: "github-pat",
-    title: "Возможный GitHub token",
+    title: "Possible GitHub token",
     pattern: /gh[pousr]_[A-Za-z0-9_]{20,}/g,
     severity: "critical",
   },
   {
     id: "slack-token",
-    title: "Возможный Slack token",
+    title: "Possible Slack token",
     pattern: /xox[baprs]-[A-Za-z0-9-]{10,}/g,
     severity: "high",
   },
   {
     id: "generic-api-key",
-    title: "Жёстко прошитый API key / secret",
+    title: "Hardcoded API key / secret",
     pattern:
       /(?:api[_-]?key|api[_-]?secret|secret[_-]?key|access[_-]?token)\s*[:=]\s*["'][^"']{12,}["']/gi,
     severity: "high",
   },
   {
     id: "private-key",
-    title: "Приватный ключ в бинарнике",
+    title: "Private key in the binary",
     pattern: /-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/g,
     severity: "critical",
   },
   {
     id: "jwt-secret",
-    title: "Похоже на JWT / bearer secret",
+    title: "Looks like a JWT / bearer secret",
     pattern: /eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}/g,
     severity: "medium",
   },
@@ -104,12 +104,12 @@ export async function runSecretsAuditor(
       scanner: "secrets",
       severity: sig.severity,
       title: sig.title,
-      detail: `Найдено совпадений: ${matches.length}. Пример (обрезано): ${sample}…`,
+      detail: `Matches found: ${matches.length}. Sample (trimmed): ${sample}…`,
       category: "vulnerability",
       meaning:
-        "Секреты в клиентской сборке может вытащить любой пользователь — это прямой риск взлома бэкенда/аккаунтов.",
+        "Anyone can extract secrets from a client build — a direct risk of backend/account compromise.",
       action:
-        "Уберите ключи из бинарника. Используйте серверную выдачу токенов и ротацию уже утекших секретов.",
+        "Remove keys from the binary. Issue tokens from the server and rotate secrets that have already leaked.",
     });
   }
 
@@ -118,11 +118,11 @@ export async function runSecretsAuditor(
       id: "sec-password-literal",
       scanner: "secrets",
       severity: "high",
-      title: "Литерал password в сборке",
-      detail: "Обнаружена строка вида password=… внутри файла.",
+      title: "Literal password in the build",
+      detail: "A string like password=… was found inside the file.",
       category: "vulnerability",
-      meaning: "Пароли в клиенте почти всегда компрометируются.",
-      action: "Удалите захардкоженные пароли; храните только на сервере.",
+      meaning: "Passwords in the client are almost always compromised.",
+      action: "Remove hardcoded passwords; store them only on the server.",
     });
   }
 
@@ -134,8 +134,8 @@ export async function runSecretsAuditor(
     durationMs: Date.now() - started,
     summary:
       findings.length === 0
-        ? `Секретов в строках ${fileName} не найдено.`
-        : `Найдено потенциальных секретов: ${findings.length}.`,
+        ? `No secrets found in the strings of ${fileName}.`
+        : `Potential secrets found: ${findings.length}.`,
     findings,
     meta: { pillar: "hardening" },
   };
@@ -160,7 +160,7 @@ export async function runElectronHardening(
       verdict: "skipped",
       score: 100,
       durationMs: Date.now() - started,
-      summary: "Не похоже на Electron/Chromium-цель — пропуск.",
+      summary: "Does not look like an Electron/Chromium target — skipped.",
       findings: [],
       meta: { skipped: true, pillar: "hardening" },
     };
@@ -176,11 +176,11 @@ export async function runElectronHardening(
       scanner: "electron-hardening",
       severity: "critical",
       title: "nodeIntegration: true",
-      detail: "Renderer может получать Node API — XSS становится RCE.",
+      detail: "The renderer may get Node API access — XSS becomes RCE.",
       category: "vulnerability",
       meaning:
-        "Любая XSS в интерфейсе может выполнить произвольный код на машине пользователя.",
-      action: "Выключите nodeIntegration и используйте contextBridge + preload.",
+        "Any XSS in the UI can run arbitrary code on the user's machine.",
+      action: "Turn off nodeIntegration and use contextBridge + preload.",
     });
   }
 
@@ -190,10 +190,10 @@ export async function runElectronHardening(
       scanner: "electron-hardening",
       severity: "high",
       title: "contextIsolation: false",
-      detail: "Изоляция контекста отключена — опасный Electron-default прошлых лет.",
+      detail: "Context isolation is disabled — a dangerous Electron default from past years.",
       category: "vulnerability",
-      meaning: "Страница может лезть в privileged preload/API.",
-      action: "Включите contextIsolation: true во всех BrowserWindow.",
+      meaning: "The page may reach into privileged preload/API.",
+      action: "Enable contextIsolation: true in every BrowserWindow.",
     });
   }
 
@@ -203,10 +203,10 @@ export async function runElectronHardening(
       scanner: "electron-hardening",
       severity: "high",
       title: "webSecurity: false",
-      detail: "Отключена web security Chromium (CORS/SOP ослаблены).",
+      detail: "Chromium web security is disabled (CORS/SOP weakened).",
       category: "vulnerability",
-      meaning: "Упрощает XSS и подгрузку чужого контента.",
-      action: "Держите webSecurity: true; не отключайте без крайней нужды.",
+      meaning: "Makes XSS and loading foreign content easier.",
+      action: "Keep webSecurity: true; do not disable it unless absolutely necessary.",
     });
   }
 
@@ -216,10 +216,10 @@ export async function runElectronHardening(
       scanner: "electron-hardening",
       severity: "medium",
       title: "allowRunningInsecureContent",
-      detail: "Разрешён mixed content (HTTP внутри HTTPS/приложения).",
+      detail: "Mixed content is allowed (HTTP inside HTTPS/the app).",
       category: "vulnerability",
-      meaning: "Трафик можно подменить в локальной сети.",
-      action: "Отключите insecure content; используйте только HTTPS.",
+      meaning: "Traffic can be tampered with on the local network.",
+      action: "Turn off insecure content; use HTTPS only.",
     });
   }
 
@@ -231,11 +231,11 @@ export async function runElectronHardening(
         id: "el-old-runtime",
         scanner: "electron-hardening",
         severity: "high",
-        title: `Устаревший Electron ${electronVer}`,
-        detail: "Старые Chromium/Electron часто содержат публичные CVE.",
+        title: `Outdated Electron ${electronVer}`,
+        detail: "Old Chromium/Electron often contains public CVEs.",
         category: "vulnerability",
-        meaning: "Известные дыры в runtime = готовый вектор взлома приложения.",
-        action: "Обновите Electron до поддерживаемой LTS и пересоберите.",
+        meaning: "Known runtime holes are a ready-made attack vector for the app.",
+        action: "Update Electron to a supported LTS and rebuild.",
       });
     }
   }
@@ -245,11 +245,11 @@ export async function runElectronHardening(
       id: "el-devtools-prod",
       scanner: "electron-hardening",
       severity: "low",
-      title: "DevTools могут быть доступны в релизе",
-      detail: "Признаки openDevTools/devTools:true рядом с production-кодом.",
+      title: "DevTools may be reachable in release builds",
+      detail: "Signs of openDevTools/devTools:true next to production code.",
       category: "policy",
-      meaning: "Упрощает реверс и кражу токенов из renderer.",
-      action: "Отключайте DevTools в production-сборках.",
+      meaning: "Makes reverse engineering and token theft from the renderer easier.",
+      action: "Disable DevTools in production builds.",
     });
   }
 
@@ -262,11 +262,11 @@ export async function runElectronHardening(
     durationMs: Date.now() - started,
     summary: electron
       ? findings.length
-        ? `Electron-сборка: ${findings.length} проблем hardening.`
-        : `Electron detected${electronVer ? ` (${electronVer})` : ""} — опасных флагов не видно.`
+        ? `Electron build: ${findings.length} hardening issues.`
+        : `Electron detected${electronVer ? ` (${electronVer})` : ""} — no dangerous flags visible.`
       : findings.length
-        ? `Найдены Electron-подобные флаги: ${findings.length}.`
-        : "Явных Electron-маркеров нет — ограниченная проверка.",
+        ? `Electron-like flags found: ${findings.length}.`
+        : "No explicit Electron markers — limited check.",
     findings,
     meta: {
       pillar: "hardening",
@@ -290,13 +290,13 @@ export async function runPrivacyAuditor(buf: Buffer): Promise<EngineResult> {
         id: `priv-${t.host.replace(/\W+/g, "-")}`,
         scanner: "privacy",
         severity: t.severity,
-        title: `Трекер / аналитика: ${t.label}`,
-        detail: `В сборке встречается хост ${t.host}`,
+        title: `Tracker / analytics: ${t.label}`,
+        detail: `Host ${t.host} appears in the build`,
         category: "policy",
         meaning:
-          "Аналитика и пиксели собирают поведение пользователей. Для вайб-продукта это вопрос доверия и иногда GDPR.",
+          "Analytics and pixels collect user behavior. For a vibe-coded product this is a trust issue and sometimes a GDPR issue.",
         action:
-          "Задокументируйте трекеры в карточке приложения, дайте opt-out или уберите лишнее.",
+          "Document the trackers on the app page, offer an opt-out or remove them.",
       });
     }
   }
@@ -306,11 +306,11 @@ export async function runPrivacyAuditor(buf: Buffer): Promise<EngineResult> {
       id: "priv-geo",
       scanner: "privacy",
       severity: "medium",
-      title: "Запрос геолокации",
-      detail: "В коде есть navigator.geolocation / getCurrentPosition.",
+      title: "Location request",
+      detail: "The code uses navigator.geolocation / getCurrentPosition.",
       category: "policy",
-      meaning: "Геолокация — чувствительные данные; без явной пользы это лишний риск.",
-      action: "Запрашивайте гео только по действию пользователя и объясните зачем.",
+      meaning: "Location is sensitive data; without a clear benefit it is an unnecessary risk.",
+      action: "Request location only on the user's action and explain why.",
     });
   }
 
@@ -319,11 +319,11 @@ export async function runPrivacyAuditor(buf: Buffer): Promise<EngineResult> {
       id: "priv-media",
       scanner: "privacy",
       severity: "medium",
-      title: "Доступ к камере / микрофону",
-      detail: "Обнаружен getUserMedia.",
+      title: "Camera / microphone access",
+      detail: "getUserMedia detected.",
       category: "policy",
-      meaning: "Камера/микрофон — высокий уровень приватности.",
-      action: "Просите разрешение явно и только когда функция реально нужна.",
+      meaning: "Camera/microphone — a high privacy level.",
+      action: "Ask for permission explicitly and only when the feature is actually needed.",
     });
   }
 
@@ -333,11 +333,11 @@ export async function runPrivacyAuditor(buf: Buffer): Promise<EngineResult> {
       id: "priv-clipboard",
       scanner: "privacy",
       severity: "high",
-      title: "Чтение буфера обмена / захват экрана",
-      detail: "API clipboard/desktopCapturer в сборке.",
+      title: "Clipboard reading / screen capture",
+      detail: "Clipboard/desktopCapturer API used in the build.",
       category: "stealer",
-      meaning: "Так часто выглядят стиллеры и «тихое» слежение.",
-      action: "Убедитесь, что это заявленная функция; иначе удалите.",
+      meaning: "This is how stealers and silent surveillance often look.",
+      action: "Make sure this is a declared feature; otherwise remove it.",
     });
   }
 
@@ -349,8 +349,8 @@ export async function runPrivacyAuditor(buf: Buffer): Promise<EngineResult> {
     durationMs: Date.now() - started,
     summary:
       findings.length === 0
-        ? "Явных трекеров и чувствительных privacy-API не видно."
-        : `Privacy: ${findings.length} сигнал(ов)${hits.length ? ` · ${[...new Set(hits)].slice(0, 4).join(", ")}` : ""}.`,
+        ? "No obvious trackers or sensitive privacy APIs."
+        : `Privacy: ${findings.length} signal(s)${hits.length ? ` · ${[...new Set(hits)].slice(0, 4).join(", ")}` : ""}.`,
     findings,
     meta: { pillar: "privacy", trackers: hits.join(",") || "none" },
   };
@@ -372,22 +372,22 @@ export async function runDeviceFootprint(
       id: "fp-huge",
       scanner: "device-footprint",
       severity: "medium",
-      title: `Очень большой дистрибутив (${sizeMb.toFixed(0)} МБ)`,
-      detail: "Тяжёлые установщики дольше качаются и занимают диск.",
+      title: `Very large distribution (${sizeMb.toFixed(0)} MB)`,
+      detail: "Heavy installers take longer to download and use disk space.",
       category: "performance",
-      meaning: "Плохой UX на слабых ПК и мобильном интернете; чаще «вечный» апдейт.",
-      action: "Сжмите ассеты, уберите лишние runtime, разбейте на optional components.",
+      meaning: "Poor UX on weak PCs and mobile internet; updates often take forever.",
+      action: "Compress assets, remove unnecessary runtimes, split into optional components.",
     });
   } else if (sizeMb >= 120) {
     findings.push({
       id: "fp-large",
       scanner: "device-footprint",
       severity: "low",
-      title: `Крупный дистрибутив (${sizeMb.toFixed(0)} МБ)`,
-      detail: "Размер заметный для десктоп-утилиты.",
+      title: `Large distribution (${sizeMb.toFixed(0)} MB)`,
+      detail: "The size is noticeable for a desktop utility.",
       category: "performance",
-      meaning: "Не баг, но пользователи на HDD/слабом Wi‑Fi почувствуют.",
-      action: "Проверьте, нужен ли полный Chromium/Electron стек.",
+      meaning: "Not a bug, but users on HDDs or weak Wi-Fi will notice.",
+      action: "Check whether the full Chromium/Electron stack is needed.",
     });
   }
 
@@ -396,11 +396,11 @@ export async function runDeviceFootprint(
       id: "fp-miner",
       scanner: "device-footprint",
       severity: "critical",
-      title: "Признаки криптомайнера",
-      detail: "В строках есть mining/pool индикаторы.",
+      title: "Signs of a crypto miner",
+      detail: "Strings contain mining/pool indicators.",
       category: "virus",
-      meaning: "Майнинг жрёт CPU/GPU и батарею — прямой вред устройству.",
-      action: "Удалите майнер. Такие сборки блокируются стором.",
+      meaning: "Mining eats CPU/GPU and battery — direct harm to the device.",
+      action: "Remove the miner. Such builds are blocked by the store.",
     });
   }
 
@@ -409,11 +409,11 @@ export async function runDeviceFootprint(
       id: "fp-hooks-priority",
       scanner: "device-footprint",
       severity: "medium",
-      title: "Системные хуки / высокий приоритет",
-      detail: "Есть API хуков клавиатуры или повышения приоритета процесса.",
+      title: "System hooks / high priority",
+      detail: "Keyboard hook or process priority elevation APIs are present.",
       category: "performance",
-      meaning: "Может тормозить систему или перехватывать ввод.",
-      action: "Оставьте только если это заявленная функция (макросы и т.п.).",
+      meaning: "It may slow the system down or intercept input.",
+      action: "Keep only if this is a declared feature (macros, etc.).",
     });
   }
 
@@ -422,11 +422,11 @@ export async function runDeviceFootprint(
       id: "fp-tight-loop",
       scanner: "device-footprint",
       severity: "low",
-      title: "Признаки плотных циклов / частых таймеров",
-      detail: "В JS/строках есть tight loop или setInterval с очень маленьким delay.",
+      title: "Signs of tight loops / frequent timers",
+      detail: "JS/strings contain a tight loop or setInterval with a very small delay.",
       category: "performance",
-      meaning: "Фоновые циклы греют CPU даже в простое.",
-      action: "Снизьте частоту polling; используйте event-driven подход.",
+      meaning: "Background loops keep the CPU warm even when idle.",
+      action: "Reduce polling frequency; use an event-driven approach.",
     });
   }
 
@@ -435,11 +435,11 @@ export async function runDeviceFootprint(
       id: "fp-packed-heavy",
       scanner: "device-footprint",
       severity: "low",
-      title: "Плотно упакованный крупный бинарь",
-      detail: `Entropy ${entropy.toFixed(2)} при размере ${sizeMb.toFixed(0)} МБ.`,
+      title: "Densely packed large binary",
+      detail: `Entropy ${entropy.toFixed(2)} at a size of ${sizeMb.toFixed(0)} MB.`,
       category: "performance",
-      meaning: "Распаковка при установке/запуске даёт пик CPU и диска.",
-      action: "Нормально для installer; убедитесь, что нет лишнего double-pack.",
+      meaning: "Unpacking on install/launch spikes CPU and disk.",
+      action: "Normal for an installer; make sure there is no extra double-pack.",
     });
   }
 
@@ -449,11 +449,11 @@ export async function runDeviceFootprint(
       id: "fp-autostart",
       scanner: "device-footprint",
       severity: "medium",
-      title: "Автозапуск со стартом системы",
-      detail: "Есть строки реестра/LaunchAgents/schtasks для автозапуска.",
+      title: "Autostart at system startup",
+      detail: "Registry/LaunchAgents/schtasks strings for autostart are present.",
       category: "policy",
-      meaning: "Приложение будет жить в фоне и тратить ресурсы без явного старта.",
-      action: "Делайте автозапуск opt-in и объясняйте пользователю.",
+      meaning: "The app will run in the background and use resources without an explicit start.",
+      action: "Make autostart opt-in and explain it to the user.",
     });
   }
 
@@ -466,8 +466,8 @@ export async function runDeviceFootprint(
     durationMs: Date.now() - started,
     summary:
       findings.length === 0
-        ? `Footprint OK · ${sizeMb.toFixed(1)} МБ.`
-        : `Влияние на устройство: ${findings.length} сигнал(ов) · ${sizeMb.toFixed(0)} МБ.`,
+        ? `Footprint OK · ${sizeMb.toFixed(1)} MB.`
+        : `Device impact: ${findings.length} signal(s) · ${sizeMb.toFixed(0)} MB.`,
     findings,
     meta: {
       pillar: "device",
@@ -521,12 +521,12 @@ export async function runIntegrityAuditor(
         id: "int-unsigned",
         scanner: "integrity",
         severity: "medium",
-        title: "Нет признаков Authenticode-подписи",
-        detail: "PE не содержит очевидной certificate table / signer metadata.",
+        title: "No signs of an Authenticode signature",
+        detail: "PE has no obvious certificate table / signer metadata.",
         category: "integrity",
         meaning:
-          "Неподписанные .exe Windows SmartScreen ругает, проще подменить файл по пути доставки.",
-        action: "Подпишите сборку code signing сертификатом перед массовым релизом.",
+          "Windows SmartScreen warns about unsigned .exe files, and the file is easier to swap on the delivery path.",
+        action: "Sign the build with a code signing certificate before a mass release.",
       });
     } else if (hasCertTable) {
       // positive — no finding
@@ -537,11 +537,11 @@ export async function runIntegrityAuditor(
         id: "int-double-ext",
         scanner: "integrity",
         severity: "critical",
-        title: "Двойное расширение (маска документа)",
-        detail: `Имя файла ${fileName} маскирует executable под документ.`,
+        title: "Double extension (document disguise)",
+        detail: `The file name ${fileName} disguises an executable as a document.`,
         category: "trojan",
-        meaning: "Классический социальный инженерный трюк.",
-        action: "Переименуйте честно (Setup.exe) — иначе стор заблокирует.",
+        meaning: "A classic social engineering trick.",
+        action: "Rename it honestly (Setup.exe) — otherwise the store will block it.",
       });
     }
   }
@@ -552,11 +552,11 @@ export async function runIntegrityAuditor(
       id: "int-debug-leftovers",
       scanner: "integrity",
       severity: "low",
-      title: "Отладочные артефакты в релизе",
-      detail: "Встречаются source map / pdb / localhost debug-строки.",
+      title: "Debug artifacts in the release",
+      detail: "Source maps / pdb files / localhost debug strings are present.",
       category: "integrity",
-      meaning: "Упрощает реверс и указывает на «сырую» production-сборку.",
-      action: "Вычистите source maps/pdb из production и закройте debug endpoints.",
+      meaning: "Makes reverse engineering easier and points to a raw production build.",
+      action: "Strip source maps/pdb from production and close debug endpoints.",
     });
   }
 
@@ -568,7 +568,7 @@ export async function runIntegrityAuditor(
         verdict: "skipped",
         score: 100,
         durationMs: Date.now() - started,
-        summary: "Не Windows PE — проверка подписи пропущена.",
+        summary: "Not a Windows PE — signature check skipped.",
         findings: [],
         meta: { skipped: true, pillar: "integrity" },
       };
@@ -583,8 +583,8 @@ export async function runIntegrityAuditor(
     durationMs: Date.now() - started,
     summary:
       findings.length === 0
-        ? "Целостность: явных проблем подписи/маскировки не видно."
-        : `Integrity: ${findings.length} замечание(й).`,
+        ? "Integrity: no obvious signature or disguise problems."
+        : `Integrity: ${findings.length} finding(s).`,
     findings,
     meta: { pillar: "integrity", isPe: pe.isPe },
   };

@@ -198,7 +198,7 @@ export async function POST(req: Request) {
   if (file.size > MAX_UPLOAD_BYTES) {
     return NextResponse.json(
       {
-        error: `Файл слишком большой (макс. ${Math.round(MAX_UPLOAD_BYTES / 1024 / 1024)} МБ)`,
+        error: `File is too large (max ${Math.round(MAX_UPLOAD_BYTES / 1024 / 1024)} MB)`,
       },
       { status: 400 },
     );
@@ -224,13 +224,13 @@ export async function POST(req: Request) {
     if (message.includes("FILE_TOO_LARGE")) {
       return NextResponse.json(
         {
-          error: `Файл слишком большой (макс. ${Math.round(MAX_UPLOAD_BYTES / 1024 / 1024)} МБ)`,
+          error: `File is too large (max ${Math.round(MAX_UPLOAD_BYTES / 1024 / 1024)} MB)`,
         },
         { status: 400 },
       );
     }
     return NextResponse.json(
-      { error: `Ошибка сохранения файла: ${message}` },
+      { error: `File save error: ${message}` },
       { status: 500 },
     );
   }

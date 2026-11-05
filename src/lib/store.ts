@@ -92,7 +92,7 @@ function recoverInterruptedScans(db: StoreDatabase): number {
     }
     app.scanProgress = {
       phase: "error",
-      label: "Сканирование прервано перезапуском — откройте страницу приложения, чтобы повторить",
+      label: "Scan interrupted by a restart — open the app page to run it again",
       percent: 0,
       engines: [],
       error: "interrupted by restart",

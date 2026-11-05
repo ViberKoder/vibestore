@@ -1,20 +1,22 @@
 import { PublishForm } from "@/components/publish-form";
+import { getT } from "@/lib/i18n/server";
 
-export default function PublishPage() {
+export default async function PublishPage() {
+  const t = await getT();
   return (
     <main className="flex-1 pb-20 pt-8 md:pt-12">
       <div className="container-store max-w-2xl">
         <div className="fade-up">
           <p className="text-[13px] font-semibold uppercase tracking-[0.14em] text-ink-3">
-            Для разработчиков
+            {t("For developers")}
           </p>
           <h1 className="mt-2 text-[36px] font-extrabold tracking-[-0.04em] text-ink md:text-[44px]">
-            Опубликовать приложение
+            {t("Publish an app")}
           </h1>
           <p className="mt-3 text-[16px] leading-relaxed text-ink-2">
-            Загрузите сайт или программу — включая .exe. Мы прогоним VirusTotal,
-            ClamAV, ClamWin и VibeGuard и покажем, готов ли продукт к массовому
-            релизу.
+            {t(
+              "Upload a website or a program, including .exe. We run VirusTotal, ClamAV, ClamWin and VibeGuard and show whether the product is ready for a mass release.",
+            )}
           </p>
         </div>
 

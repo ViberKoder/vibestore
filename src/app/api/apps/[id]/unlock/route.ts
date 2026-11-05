@@ -112,7 +112,7 @@ export async function POST(
       return NextResponse.json(
         {
           error:
-            "Имя разработчика не совпало. Введите его точно как в карточке приложения.",
+            "The developer name does not match. Enter it exactly as on the app page.",
         },
         { status: 403 },
       );
@@ -140,7 +140,7 @@ export async function POST(
   return NextResponse.json(
     {
       error:
-        "Доступ привязан к другому браузеру. Нажмите «Восстановить» и введите имя разработчика с карточки.",
+        "Access is linked to another browser. Click «Restore» and enter the developer name from the app page.",
     },
     { status: 403 },
   );
