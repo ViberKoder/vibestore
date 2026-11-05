@@ -5,9 +5,13 @@ import { DashboardAppActions } from "@/components/dashboard-app-actions";
 import { SafetyBadge } from "@/components/safety-badge";
 import { formatNumber } from "@/lib/format";
 import { isAppOwner } from "@/lib/owner-auth";
+import { getLocale, getT } from "@/lib/i18n/server";
+import { translate } from "@/lib/i18n/core";
 import { listApps } from "@/lib/store";
 
 export default async function DashboardPage() {
+  const t = await getT();
+  const locale = await getLocale();
   const cookie = (await headers()).get("cookie");
   const all = await listApps({ status: "all" });
   const apps = all.filter((a) => isAppOwner(a, cookie));
@@ -19,43 +23,41 @@ export default async function DashboardPage() {
         <div className="fade-up flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
           <div>
             <p className="text-[13px] font-semibold uppercase tracking-[0.14em] text-ink-3">
-              Кабинет
+              {t("Dashboard")}
             </p>
             <h1 className="mt-2 text-[36px] font-extrabold tracking-[-0.04em] md:text-[44px]">
-              Ваши приложения
+              {t("Your apps")}
             </h1>
             <p className="mt-3 max-w-xl text-[16px] text-ink-2">
-              Здесь только то, что загрузили с этого браузера. Чужие сборки не
-              показываем.
+              {t("Only apps uploaded from this browser are shown. Other builds stay hidden.")}
             </p>
           </div>
           <Link href="/publish" className="btn-primary shrink-0">
-            Новая публикация
+            {t("New upload")}
           </Link>
         </div>
 
         <div className="fade-up-d1 mt-10 overflow-hidden surface-card">
           <div className="hidden grid-cols-[1.3fr_0.9fr_70px_1fr_88px_150px] gap-3 border-b border-[var(--line)] px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.1em] text-ink-3 md:grid">
-            <span>Приложение</span>
-            <span>Статус</span>
-            <span>Score</span>
-            <span>Readiness</span>
-            <span className="text-right">Loads</span>
-            <span className="text-right">Действия</span>
+            <span>{t("App")}</span>
+            <span>{t("Status")}</span>
+            <span>{t("Score")}</span>
+            <span>{t("Readiness")}</span>
+            <span className="text-right">{t("Downloads")}</span>
+            <span className="text-right">{t("Actions")}</span>
           </div>
           {apps.length === 0 && (
             <p className="px-5 py-10 text-center text-[14px] text-ink-2">
-              С этого браузера пока ничего не загружали.{" "}
+              {t("Nothing has been uploaded from this browser yet.")}{" "}
               <Link href="/publish" className="font-semibold text-blue">
-                Опубликовать
+                {t("Publish")}
               </Link>
               {" "}
-              Если админка слетела после смены адреса — откройте карточку
-              приложения и нажмите «Восстановить», введя имя разработчика.
+              {t("If the owner access was lost after an address change, open the app page and click «Restore» with the developer name.")}
               {unclaimedExist && (
                 <>
                   {" "}
-                  Старые сборки без владельца: «Это моё?».
+                  {t("Older builds without an owner: «Is this mine?».")}
                 </>
               )}
             </p>
@@ -84,10 +86,10 @@ export default async function DashboardPage() {
                 {app.scan?.securityScore ?? "—"}
               </div>
               <div className="hidden truncate text-[13px] text-ink-2 md:block">
-                {app.scan?.readinessLabel ?? "—"}
+                {app.scan?.readinessLabel ? translate(app.scan.readinessLabel, locale) : "—"}
               </div>
               <div className="hidden text-[13px] tabular-nums text-ink-2 md:block md:text-right">
-                {formatNumber(app.downloads)}
+                {formatNumber(app.downloads, locale)}
               </div>
               <div className="md:justify-self-end">
                 <DashboardAppActions slug={app.slug} />

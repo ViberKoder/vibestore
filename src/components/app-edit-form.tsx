@@ -4,10 +4,13 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import type { PublicStoreApp } from "@/lib/owner-auth";
 import { formatBytes } from "@/lib/format";
+import { fill } from "@/lib/i18n/core";
+import { useT } from "@/lib/i18n/client";
 import { AppIcon } from "./app-icon";
 
 export function AppEditForm({ app }: { app: PublicStoreApp }) {
   const router = useRouter();
+  const t = useT();
   const [busy, setBusy] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -48,11 +51,11 @@ export function AppEditForm({ app }: { app: PublicStoreApp }) {
         app?: { slug: string };
       };
       if (!res.ok) {
-        setError(json.error ?? "Не удалось сохранить");
+        setError(json.error ?? t("Could not save"));
         setBusy(false);
         return;
       }
-      setOk("Сохранено");
+      setOk(t("Saved"));
       setBusy(false);
       if (json.rescan && json.app?.slug) {
         router.push(`/apps/${json.app.slug}?scanning=1`);
@@ -61,7 +64,7 @@ export function AppEditForm({ app }: { app: PublicStoreApp }) {
       router.push(`/apps/${json.app?.slug ?? app.slug}`);
       router.refresh();
     } catch {
-      setError("Сеть недоступна");
+      setError(t("Network unavailable"));
       setBusy(false);
     }
   }
@@ -69,7 +72,7 @@ export function AppEditForm({ app }: { app: PublicStoreApp }) {
   async function onDelete() {
     if (
       !window.confirm(
-        `Удалить «${app.name}» безвозвратно? Файл сборки и медиа тоже будут удалены.`,
+        fill(t("Delete «{name}» permanently? The build file and media will also be deleted."), { name: app.name }),
       )
     ) {
       return;
@@ -85,14 +88,14 @@ export function AppEditForm({ app }: { app: PublicStoreApp }) {
       });
       const json = (await res.json()) as { error?: string };
       if (!res.ok) {
-        setError(json.error ?? "Не удалось удалить");
+        setError(json.error ?? t("Could not delete"));
         setDeleting(false);
         return;
       }
       router.push("/dashboard");
       router.refresh();
     } catch {
-      setError("Сеть недоступна");
+      setError(t("Network unavailable"));
       setDeleting(false);
     }
   }
@@ -105,7 +108,7 @@ export function AppEditForm({ app }: { app: PublicStoreApp }) {
     <form onSubmit={onSubmit} className="space-y-6">
       <section className="space-y-3">
         <h2 className="text-[15px] font-semibold tracking-[-0.02em]">
-          Аватарка
+          {t("Icon")}
         </h2>
         <div className="flex flex-wrap items-center gap-4">
           {iconPreview ? (
@@ -147,7 +150,7 @@ export function AppEditForm({ app }: { app: PublicStoreApp }) {
                   if (input) input.value = "";
                 }}
               >
-                Убрать аватарку
+                {t("Remove icon")}
               </button>
             )}
           </div>
@@ -156,34 +159,34 @@ export function AppEditForm({ app }: { app: PublicStoreApp }) {
 
       <div className="grid gap-4 md:grid-cols-2">
         <Field
-          label="Название"
+          label="Name"
           name="name"
           defaultValue={app.name}
           required
           disabled={busy || deleting}
         />
         <Field
-          label="Версия"
+          label="Version"
           name="version"
           defaultValue={app.version}
           required
           disabled={busy || deleting}
         />
         <Field
-          label="Слоган"
+          label="Tagline"
           name="tagline"
           defaultValue={app.tagline}
           required
           disabled={busy || deleting}
         />
         <Field
-          label="Категория"
+          label="Category"
           name="category"
           defaultValue={app.category}
           disabled={busy || deleting}
         />
         <Field
-          label="Разработчик"
+          label="Developer"
           name="developerName"
           defaultValue={app.developerName}
           required
@@ -197,7 +200,7 @@ export function AppEditForm({ app }: { app: PublicStoreApp }) {
           disabled={busy || deleting}
         />
         <label className="block space-y-2">
-          <span className="text-[13px] font-semibold text-ink">Тип</span>
+          <span className="text-[13px] font-semibold text-ink">{t("Type")}</span>
           <select
             name="kind"
             defaultValue={app.kind}
@@ -212,7 +215,7 @@ export function AppEditForm({ app }: { app: PublicStoreApp }) {
           </select>
         </label>
         <Field
-          label="Сайт"
+          label="Website"
           name="homepage"
           defaultValue={app.homepage ?? ""}
           disabled={busy || deleting}
@@ -220,7 +223,7 @@ export function AppEditForm({ app }: { app: PublicStoreApp }) {
       </div>
 
       <label className="block space-y-2">
-        <span className="text-[13px] font-semibold text-ink">Описание</span>
+        <span className="text-[13px] font-semibold text-ink">{t("Description")}</span>
         <textarea
           name="description"
           required
@@ -232,7 +235,7 @@ export function AppEditForm({ app }: { app: PublicStoreApp }) {
       </label>
 
       <Field
-        label="Теги (через запятую)"
+        label="Tags (comma-separated)"
         name="tags"
         defaultValue={app.tags.join(", ")}
         disabled={busy || deleting}
@@ -240,7 +243,7 @@ export function AppEditForm({ app }: { app: PublicStoreApp }) {
 
       <label className="block space-y-2">
         <span className="text-[13px] font-semibold text-ink">
-          Возможности (по строке)
+          {t("Features (one per line)")}
         </span>
         <textarea
           name="features"
@@ -248,13 +251,13 @@ export function AppEditForm({ app }: { app: PublicStoreApp }) {
           defaultValue={featuresText}
           disabled={busy || deleting}
           className="field-input min-h-[96px] resize-y font-mono text-[13px]"
-          placeholder="Заголовок | детали"
+          placeholder="Title | details"
         />
       </label>
 
       <section className="space-y-3">
         <h2 className="text-[15px] font-semibold tracking-[-0.02em]">
-          Скриншоты
+          {t("Screenshots")}
         </h2>
         {visibleShots.length > 0 && (
           <div className="flex flex-wrap gap-2">
@@ -291,11 +294,10 @@ export function AppEditForm({ app }: { app: PublicStoreApp }) {
 
       <section className="space-y-2">
         <h2 className="text-[15px] font-semibold tracking-[-0.02em]">
-          Новая сборка (опционально)
+          {t("New build (optional)")}
         </h2>
         <p className="text-[12px] text-ink-3">
-          Текущий файл: {app.fileName} · {formatBytes(app.fileSize)}. Загрузка
-          новой версии запустит полный рескан.
+          {fill(t("Current file: {name} · {size}. Uploading a new version starts a full rescan."), { name: app.fileName, size: formatBytes(app.fileSize) })}
         </p>
         <input
           type="file"
@@ -307,12 +309,12 @@ export function AppEditForm({ app }: { app: PublicStoreApp }) {
 
       {error && (
         <p className="rounded-2xl bg-red-soft px-4 py-3 text-[13px] text-red-ink">
-          {error}
+          {t(error)}
         </p>
       )}
       {ok && (
         <p className="rounded-2xl bg-green-soft px-4 py-3 text-[13px] text-green-ink">
-          {ok}
+          {t(ok)}
         </p>
       )}
 
@@ -322,7 +324,7 @@ export function AppEditForm({ app }: { app: PublicStoreApp }) {
           disabled={busy || deleting}
           className="btn-primary"
         >
-          {busy ? "Сохраняем…" : "Сохранить изменения"}
+          {busy ? t("Saving…") : t("Save changes")}
         </button>
         <button
           type="button"
@@ -330,7 +332,7 @@ export function AppEditForm({ app }: { app: PublicStoreApp }) {
           disabled={busy || deleting}
           className="btn-secondary"
         >
-          Отмена
+          {t("Cancel")}
         </button>
         <button
           type="button"
@@ -338,7 +340,7 @@ export function AppEditForm({ app }: { app: PublicStoreApp }) {
           disabled={busy || deleting}
           className="ml-auto inline-flex h-11 items-center rounded-full bg-red-soft px-5 text-[14px] font-semibold text-red-ink transition hover:opacity-90 disabled:opacity-50"
         >
-          {deleting ? "Удаляем…" : "Удалить приложение"}
+          {deleting ? t("Deleting…") : t("Delete app")}
         </button>
       </div>
     </form>
@@ -362,9 +364,10 @@ function Field({
   disabled?: boolean;
   defaultValue?: string;
 }) {
+  const t = useT();
   return (
     <label className="block space-y-2">
-      <span className="text-[13px] font-semibold text-ink">{label}</span>
+      <span className="text-[13px] font-semibold text-ink">{t(label)}</span>
       <input
         name={name}
         type={type}

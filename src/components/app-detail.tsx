@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useState } from "react";
 import type { PublicStoreApp } from "@/lib/owner-auth";
 import { formatBytes, formatNumber } from "@/lib/format";
+import { fill } from "@/lib/i18n/core";
+import { useLocale, useT } from "@/lib/i18n/client";
 import { AppIcon } from "./app-icon";
 import { AppRow } from "./app-row";
 import { AppScanGate } from "./app-scan-gate";
@@ -24,6 +26,8 @@ export function AppDetail({
   /** Only the uploader (or claimable legacy app) sees manage */
   showManage?: boolean;
 }) {
+  const t = useT();
+  const locale = useLocale();
   const features = app.features ?? [];
   const shots = app.screenshots ?? [];
   const hasGallery = shots.length > 0;
@@ -38,13 +42,13 @@ export function AppDetail({
     (app.status === "quarantined" && app.scan?.readiness !== "blocked");
 
   const tabs: Array<{ id: Tab; label: string; hidden?: boolean }> = [
-    { id: "overview", label: "Обзор" },
+    { id: "overview", label: "Overview" },
     {
       id: "gallery",
-      label: hasGallery ? "Галерея" : "Функции",
+      label: hasGallery ? "Gallery" : "Feature list",
       hidden: !hasGallery && features.length === 0,
     },
-    { id: "audit", label: "Аудит" },
+    { id: "audit", label: "Audit" },
   ];
 
   return (
@@ -70,16 +74,16 @@ export function AppDetail({
                 className="btn-primary !h-10 !px-6 !text-[14px]"
               >
                 {app.status === "quarantined"
-                  ? "Скачать на свой риск"
-                  : "Скачать"}
+                  ? t("Download at your own risk")
+                  : t("Download")}
               </a>
             ) : app.status === "scanning" || forceScanning ? (
               <span className="inline-flex h-10 items-center rounded-full bg-blue-soft px-5 text-[14px] font-semibold text-blue">
-                Сканирование…
+                {t("Scanning…")}
               </span>
             ) : (
               <span className="inline-flex h-10 items-center rounded-full bg-red-soft px-5 text-[14px] font-semibold text-red-ink">
-                Скачивание недоступно
+                {t("Download unavailable")}
               </span>
             )}
             {app.homepage && (
@@ -89,7 +93,7 @@ export function AppDetail({
                 rel="noreferrer"
                 className="btn-secondary !h-10 !px-5 !text-[14px]"
               >
-                Сайт
+                {t("Website")}
               </a>
             )}
             {showManage && (
@@ -98,15 +102,18 @@ export function AppDetail({
                 className="btn-secondary !h-10 !px-5 !text-[14px]"
               >
                 {app.isOwner
-                  ? "Управление"
+                  ? t("Manage")
                   : app.canRestore
-                    ? "Восстановить"
-                    : "Это моё?"}
+                    ? t("Restore")
+                    : t("Is this mine?")}
               </Link>
             )}
             <span className="ml-1 text-[12px] tabular-nums text-ink-3">
-              v{app.version} · {formatBytes(app.fileSize)} ·{" "}
-              {formatNumber(app.downloads)} загрузок
+              {fill(t("v{version} · {size} · {count} downloads"), {
+                version: app.version,
+                size: formatBytes(app.fileSize),
+                count: formatNumber(app.downloads, locale),
+              })}
             </span>
           </div>
         </div>
@@ -114,20 +121,20 @@ export function AppDetail({
 
       <nav className="fade-up-d1 mt-6 flex gap-1 border-b border-[var(--line)]">
         {tabs
-          .filter((t) => !t.hidden)
-          .map((t) => (
+          .filter((tb) => !tb.hidden)
+          .map((tb) => (
             <button
-              key={t.id}
+              key={tb.id}
               type="button"
-              onClick={() => setTab(t.id)}
+              onClick={() => setTab(tb.id)}
               className={`relative px-4 py-2.5 text-[14px] font-semibold tracking-[-0.01em] transition ${
-                tab === t.id
+                tab === tb.id
                   ? "text-ink"
                   : "text-ink-3 hover:text-ink-2"
               }`}
             >
-              {t.label}
-              {tab === t.id && (
+              {t(tb.label)}
+              {tab === tb.id && (
                 <span className="absolute inset-x-3 -bottom-px h-0.5 rounded-full bg-blue" />
               )}
             </button>
@@ -160,11 +167,12 @@ function OverviewTab({
   features: StoreApp["features"];
   related: PublicStoreApp[];
 }) {
+  const t = useT();
   return (
     <div className="grid gap-8 lg:grid-cols-[1fr_280px]">
       <div className="space-y-8">
         <section>
-          <h2 className="text-[17px] font-bold tracking-[-0.02em]">Описание</h2>
+          <h2 className="text-[17px] font-bold tracking-[-0.02em]">{t("Description")}</h2>
           <p className="mt-2 whitespace-pre-wrap text-[14px] leading-[1.65] text-ink-2">
             {app.description}
           </p>
@@ -173,7 +181,7 @@ function OverviewTab({
         {features.length > 0 && (
           <section>
             <h2 className="text-[17px] font-bold tracking-[-0.02em]">
-              Возможности
+              {t("Features")}
             </h2>
             <ul className="mt-3 space-y-2.5">
               {features.map((f, i) => (
@@ -198,7 +206,7 @@ function OverviewTab({
         {related.length > 0 && (
           <section>
             <h2 className="text-[17px] font-bold tracking-[-0.02em]">
-              Ещё из каталога
+              {t("More from the catalog")}
             </h2>
             <div className="mt-2 surface-card px-3">
               {related.slice(0, 3).map((a) => (
@@ -210,9 +218,9 @@ function OverviewTab({
       </div>
 
       <aside className="h-fit space-y-3 rounded-2xl bg-surface px-4 py-4 shadow-[var(--shadow-sm)]">
-        <MetaRow label="Категория" value={app.category || "—"} />
-        <MetaRow label="Тип" value={app.kind} />
-        <MetaRow label="Файл" value={app.fileName} />
+        <MetaRow label={t("Category")} value={app.category || "—"} />
+        <MetaRow label={t("Type")} value={app.kind} />
+        <MetaRow label={t("File")} value={app.fileName} />
         <MetaRow label="SHA256" value={`${app.sha256.slice(0, 12)}…`} mono />
         {app.tags.length > 0 && (
           <div className="flex flex-wrap gap-1.5 pt-1">
@@ -228,12 +236,12 @@ function OverviewTab({
         )}
         {typeof app.scan?.securityScore === "number" && (
           <p className="border-t border-[var(--line)] pt-3 text-[12px] text-ink-3">
-            Trust score{" "}
+            {t("Trust score")}{" "}
             <span className="font-semibold tabular-nums text-ink">
               {app.scan.trustScore ?? app.scan.securityScore}
             </span>
             {" · "}
-            детали во вкладке «Аудит»
+            {t("details in the «Audit» tab")}
           </p>
         )}
       </aside>
@@ -248,11 +256,12 @@ function GalleryTab({
   shots: PublicStoreApp["screenshots"];
   features: PublicStoreApp["features"];
 }) {
+  const t = useT();
   const [active, setActive] = useState(0);
   if (!shots.length && !features.length) {
     return (
       <p className="text-[14px] text-ink-2">
-        Разработчик пока не добавил скриншоты и список функций.
+        {t("The developer has not added screenshots or a feature list yet.")}
       </p>
     );
   }
@@ -300,7 +309,7 @@ function GalleryTab({
 
       {features.length > 0 && (
         <section>
-          <h2 className="text-[17px] font-bold tracking-[-0.02em]">Функции</h2>
+          <h2 className="text-[17px] font-bold tracking-[-0.02em]">{t("Feature list")}</h2>
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
             {features.map((f, i) => (
               <div

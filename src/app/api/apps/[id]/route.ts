@@ -77,13 +77,13 @@ function denyUnlessOwner(req: Request, app: StoreApp): NextResponse | null {
     return NextResponse.json(
       {
         error:
-          "Приложение ещё не привязано. Откройте «Управление» и нажмите «Это моё приложение».",
+          "The app is not linked yet. Open «Manage» and click «This is my app».",
       },
       { status: 403 },
     );
   }
   return NextResponse.json(
-    { error: "Только тот, кто загрузил приложение, может его менять." },
+    { error: "Only the uploader can change this app." },
     { status: 403 },
   );
 }
@@ -292,7 +292,7 @@ export async function PATCH(
       if (build.size > MAX_UPLOAD_BYTES) {
         return NextResponse.json(
           {
-            error: `Файл слишком большой (макс. ${Math.round(MAX_UPLOAD_BYTES / 1024 / 1024)} МБ)`,
+            error: `File is too large (max ${Math.round(MAX_UPLOAD_BYTES / 1024 / 1024)} MB)`,
           },
           { status: 400 },
         );
@@ -323,7 +323,7 @@ export async function PATCH(
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         return NextResponse.json(
-          { error: `Ошибка сохранения файла: ${message}` },
+          { error: `File save error: ${message}` },
           { status: 500 },
         );
       }

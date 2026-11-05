@@ -1,16 +1,20 @@
+"use client";
+
 import Link from "next/link";
+import { useT } from "@/lib/i18n/client";
 
 export function SectionHeader({
   title,
   subtitle,
   href,
-  action = "См. все",
+  action,
 }: {
   title: string;
   subtitle?: string;
   href?: string;
   action?: string;
 }) {
+  const t = useT();
   return (
     <div className="mb-3 flex items-end justify-between gap-4">
       <div>
@@ -26,7 +30,7 @@ export function SectionHeader({
           href={href}
           className="shrink-0 text-[14px] font-medium text-blue hover:underline"
         >
-          {action}
+          {action ?? t("See all")}
         </Link>
       )}
     </div>

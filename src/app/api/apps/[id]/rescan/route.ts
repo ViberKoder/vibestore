@@ -44,13 +44,13 @@ export async function POST(
     await updateScanProgress(app.id, {
       ...initialScanProgress(),
       phase: "running",
-      label: "Перепроверяем VirusTotal…",
+      label: "Rechecking VirusTotal…",
       percent: 40,
       currentEngine: "virustotal",
       engines: (app.scanProgress?.engines ?? initialScanProgress().engines).map(
         (e) =>
           e.scanner === "virustotal"
-            ? { ...e, phase: "running", summary: "Запрос к VirusTotal…" }
+            ? { ...e, phase: "running", summary: "Querying VirusTotal…" }
             : e,
       ),
     });
@@ -102,7 +102,7 @@ export async function POST(
   await updateScanProgress(app.id, {
     ...initialScanProgress(),
     phase: "running",
-    label: "Полный повторный скан…",
+    label: "Full rescan…",
     percent: 1,
   });
 

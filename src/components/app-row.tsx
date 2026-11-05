@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { useT } from "@/lib/i18n/client";
 import type { PublicStoreApp } from "@/lib/owner-auth";
 import type { StoreApp } from "@/lib/types";
 import { AppIcon } from "./app-icon";
@@ -13,6 +16,7 @@ export function AppRow({
   rank?: number;
   divider?: boolean;
 }) {
+  const t = useT();
   const canGet = app.status === "published";
 
   return (
@@ -35,7 +39,7 @@ export function AppRow({
         </div>
         <div className="mt-0.5 truncate text-[12px] text-ink-2">
           {app.category}
-          {app.scan ? ` · Score ${app.scan.securityScore}` : ""}
+          {app.scan ? ` · ${t("Score")} ${app.scan.securityScore}` : ""}
         </div>
         <div className="mt-1.5 md:hidden">
           <SafetyBadge app={app} />
@@ -46,14 +50,14 @@ export function AppRow({
       </div>
       {canGet ? (
         <Link href={`/apps/${app.slug}`} className="btn-get shrink-0">
-          Открыть
+          {t("Open")}
         </Link>
       ) : (
         <Link
           href={`/apps/${app.slug}`}
           className="inline-flex h-[30px] shrink-0 items-center rounded-full bg-black/[0.04] px-3.5 text-[12px] font-semibold text-ink-2"
         >
-          Отчёт
+          {t("Report")}
         </Link>
       )}
     </div>

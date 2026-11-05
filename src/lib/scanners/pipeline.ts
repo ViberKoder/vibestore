@@ -44,23 +44,23 @@ function readinessFrom(
 
   const map = {
     ready: {
-      readinessLabel: "Готово к массовому релизу",
+      readinessLabel: "Ready for mass release",
       readinessHint:
-        "Независимый аудит не нашёл блокирующих рисков. Следите за обновлениями runtime и зависимостей.",
+        "The independent audit found no blocking risks. Keep the runtime and dependencies up to date.",
       consensus:
-        "AV-консенсус + hardening/privacy/device — без критичных красных флагов.",
+        "AV consensus + hardening/privacy/device — no critical red flags.",
     },
     needs_fixes: {
-      readinessLabel: "Нужны правки перед релизом",
+      readinessLabel: "Fixes needed before release",
       readinessHint:
-        "Исправьте high/medium-находки аудита и пересканируйте перед массовой раздачей.",
-      consensus: "Есть замечания аудитора — пока как пре-релиз, не в прод.",
+        "Fix the high/medium audit findings and rescan before a mass release.",
+      consensus: "The auditor has findings — pre-release only, not for production.",
     },
     blocked: {
-      readinessLabel: "Заблокировано — не распространять",
+      readinessLabel: "Blocked — do not distribute",
       readinessHint:
-        "Критичные malware/секреты/дыры. Скачивание для пользователей закрыто.",
-      consensus: "Критичный риск для пользователей — релиз заблокирован.",
+        "Critical malware/secrets/holes. Downloads for users are closed.",
+      consensus: "Critical risk for users — release blocked.",
     },
   } as const;
 
@@ -70,7 +70,7 @@ function readinessFrom(
 export function initialScanProgress(): ScanProgress {
   return {
     phase: "queued",
-    label: "Ожидание запуска сканирования…",
+    label: "Waiting to start the scan…",
     percent: 0,
     engines: SCAN_ENGINE_ORDER.map((e) => ({
       scanner: e.scanner,
@@ -95,10 +95,10 @@ function buildProgress(
     label:
       label ??
       (running
-        ? `Сканирует: ${running.displayName}…`
+        ? `Running: ${running.displayName}…`
         : done === total
-          ? "Сканирование завершено"
-          : "Сканирование…"),
+          ? "Scan complete"
+          : "Scanning…"),
     percent: done === total ? 100 : Math.max(percent, running ? 5 : 0),
     currentEngine: current ?? running?.scanner,
     engines,
@@ -129,7 +129,7 @@ export async function runScanPipeline(opts: {
     await opts.onProgress(buildProgress(track, current, label));
   };
 
-  await notify(undefined, "Запуск Vibe Audit + антивирусов…");
+  await notify(undefined, "Starting Vibe Audit + antivirus engines…");
 
   // Independent engines run concurrently. I/O-bound work (clamd, VirusTotal
   // polling) overlaps with the CPU-bound heuristics instead of queueing behind
@@ -162,7 +162,7 @@ export async function runScanPipeline(opts: {
       track[i] = { ...track[i], phase: "running", startedAt: new Date().toISOString() };
     }
   }
-  await notify(undefined, "Сканирование: движки запущены параллельно…");
+  await notify(undefined, "Scanning: engines started in parallel…");
 
   await Promise.all(
     tasks.map(async (task) => {
@@ -277,11 +277,11 @@ export async function finalizeReport(
 
   const ready = readinessFrom(trustScore, findings);
   if (vtPending && ready.readiness === "needs_fixes") {
-    ready.readinessLabel = "Ждём VirusTotal — повторите проверку";
+    ready.readinessLabel = "Waiting for VirusTotal — run the check again";
     ready.readinessHint =
-      "VirusTotal ещё анализирует файл. Остальной аудит уже посчитан — нажмите «Перепроверить VirusTotal».";
+      "VirusTotal is still analyzing the file. The rest of the audit is already done — press «Recheck VirusTotal».";
     ready.consensus =
-      "Локальные AV/аудит готовы; отчёт VirusTotal ещё догоняет.";
+      "Local AV/audit is ready; the VirusTotal report is still catching up.";
   }
 
   const finishedAt = new Date().toISOString();

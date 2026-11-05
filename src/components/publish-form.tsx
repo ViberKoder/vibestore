@@ -3,12 +3,14 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { formatBytes } from "@/lib/format";
+import { useT } from "@/lib/i18n/client";
 import { MAX_UPLOAD_BYTES } from "@/lib/types";
 
 type Phase = "idle" | "uploading" | "starting_scan";
 
 export function PublishForm() {
   const router = useRouter();
+  const t = useT();
   const [error, setError] = useState<string | null>(null);
   const [phase, setPhase] = useState<Phase>("idle");
   const [uploadPct, setUploadPct] = useState(0);
@@ -21,12 +23,12 @@ export function PublishForm() {
     const data = new FormData(form);
     const file = data.get("file");
     if (!(file instanceof File) || file.size === 0) {
-      setError("Прикрепите файл приложения (.exe, .zip, .html и др.)");
+      setError(t("Attach the app file (.exe, .zip, .html, etc.)"));
       return;
     }
     if (file.size > MAX_UPLOAD_BYTES) {
       setError(
-        `Файл слишком большой (макс. ${Math.round(MAX_UPLOAD_BYTES / 1024 / 1024)} МБ)`,
+        `File is too large (max ${Math.round(MAX_UPLOAD_BYTES / 1024 / 1024)} MB)`,
       );
       return;
     }
@@ -38,7 +40,7 @@ export function PublishForm() {
     try {
       const json = await uploadWithProgress(data, (pct) => setUploadPct(pct));
       if (json.error || !json.app?.slug) {
-        setError(json.error ?? "Ошибка публикации");
+        setError(json.error ?? t("Publish failed"));
         setPhase("idle");
         return;
       }
@@ -46,7 +48,7 @@ export function PublishForm() {
       setUploadPct(100);
       router.push(`/apps/${json.app.slug}?scanning=1`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Сеть недоступна");
+      setError(err instanceof Error ? err.message : t("Network unavailable"));
       setPhase("idle");
     }
   }
@@ -55,30 +57,30 @@ export function PublishForm() {
 
   return (
     <form onSubmit={onSubmit} className="space-y-5">
-      <Field label="Название" name="name" required placeholder="ClipForge" />
+      <Field label="Name" name="name" required placeholder="ClipForge" />
       <Field
-        label="Короткий слоган"
+        label="Tagline"
         name="tagline"
         required
-        placeholder="Одно предложение о продукте"
+        placeholder="One sentence about the product"
       />
       <label className="block space-y-2">
-        <span className="text-[13px] font-semibold text-ink">Описание</span>
+        <span className="text-[13px] font-semibold text-ink">{t("Description")}</span>
         <textarea
           name="description"
           required
           rows={4}
           className="field-input min-h-[110px] resize-y"
-          placeholder="Что делает приложение и для кого"
+          placeholder="What the app does and who it is for"
           disabled={busy}
         />
       </label>
       <div className="grid gap-4 md:grid-cols-2">
         <Field
-          label="Разработчик"
+          label="Developer"
           name="developerName"
           required
-          placeholder="Ваше имя или студия"
+          placeholder="Your name or studio"
           disabled={busy}
         />
         <Field
@@ -88,32 +90,32 @@ export function PublishForm() {
           placeholder="dev@example.com"
           disabled={busy}
         />
-        <Field label="Версия" name="version" placeholder="0.1.0" disabled={busy} />
+        <Field label="Version" name="version" placeholder="0.1.0" disabled={busy} />
         <Field
-          label="Категория"
+          label="Category"
           name="category"
           placeholder="Utilities"
           disabled={busy}
         />
         <label className="block space-y-2">
-          <span className="text-[13px] font-semibold text-ink">Тип</span>
+          <span className="text-[13px] font-semibold text-ink">{t("Type")}</span>
           <select
             name="kind"
             className="field-input"
             defaultValue="desktop"
             disabled={busy}
           >
-            <option value="desktop">Desktop (.exe и др.)</option>
-            <option value="web">Web / сайт</option>
+            <option value="desktop">Desktop (.exe, etc.)</option>
+            <option value="web">Web / website</option>
             <option value="cli">CLI</option>
             <option value="mobile">Mobile</option>
             <option value="other">Other</option>
           </select>
         </label>
-        <Field label="Сайт" name="homepage" placeholder="https://" disabled={busy} />
+        <Field label="Website" name="homepage" placeholder="https://" disabled={busy} />
       </div>
       <Field
-        label="Теги (через запятую)"
+        label="Tags (comma-separated)"
         name="tags"
         placeholder="windows, productivity, vibe"
         disabled={busy}
@@ -121,7 +123,7 @@ export function PublishForm() {
 
       <label className="block space-y-2">
         <span className="text-[13px] font-semibold text-ink">
-          Возможности (по строке)
+          {t("Features (one per line)")}
         </span>
         <textarea
           name="features"
@@ -129,13 +131,13 @@ export function PublishForm() {
           disabled={busy}
           className="field-input min-h-[96px] resize-y font-mono text-[13px]"
           placeholder={
-            "Быстрый поиск | Находит файлы за миллисекунды\nОфлайн-режим\nТёмная тема | Автопереключение"
+            "Fast search | Finds files in milliseconds\nOffline mode\nDark theme | Auto-switch"
           }
         />
       </label>
 
       <label className="block space-y-2">
-        <span className="text-[13px] font-semibold text-ink">Аватарка</span>
+        <span className="text-[13px] font-semibold text-ink">{t("Icon")}</span>
         <div className="rounded-2xl border border-dashed border-[var(--line-strong)] bg-bg px-4 py-5">
           <input
             type="file"
@@ -149,7 +151,7 @@ export function PublishForm() {
 
       <label className="block space-y-2">
         <span className="text-[13px] font-semibold text-ink">
-          Скриншоты интерфейса
+          {t("Interface screenshots")}
         </span>
         <div className="rounded-2xl border border-dashed border-[var(--line-strong)] bg-bg px-4 py-5">
           <input
@@ -164,7 +166,7 @@ export function PublishForm() {
       </label>
 
       <label className="block space-y-2">
-        <span className="text-[13px] font-semibold text-ink">Файл сборки</span>
+        <span className="text-[13px] font-semibold text-ink">{t("Build file")}</span>
         <div className="rounded-2xl border border-dashed border-[var(--line-strong)] bg-bg px-4 py-6">
           <input
             type="file"
@@ -178,8 +180,7 @@ export function PublishForm() {
             className="block w-full text-[13px] text-ink-2 file:mr-3 file:rounded-full file:border-0 file:bg-blue-soft file:px-4 file:py-2 file:text-[13px] file:font-semibold file:text-blue"
           />
           <p className="mt-3 text-[12px] text-ink-3">
-            До {Math.round(MAX_UPLOAD_BYTES / 1024 / 1024)} МБ. Этот браузер
-            запомнится как владелец — только вы увидите «Управление».
+            {t("Up to")} {Math.round(MAX_UPLOAD_BYTES / 1024 / 1024)} {t("MB")}. {t("This browser will be remembered as the owner — only you will see «Manage».")}
           </p>
           {fileLabel && (
             <p className="mt-2 text-[13px] font-medium text-ink">{fileLabel}</p>
@@ -192,8 +193,8 @@ export function PublishForm() {
           <div className="flex items-center justify-between gap-3">
             <p className="text-[14px] font-semibold text-ink">
               {phase === "uploading"
-                ? "Загрузка файла на сервер…"
-                : "Открываем экран сканирования…"}
+                ? t("Uploading the file to the server…")
+                : t("Opening the scan screen…")}
             </p>
             <span className="text-[20px] font-bold tabular-nums text-blue">
               {uploadPct}%
@@ -210,7 +211,7 @@ export function PublishForm() {
 
       {error && (
         <p className="rounded-2xl bg-red-soft px-4 py-3 text-[13px] text-red-ink">
-          {error}
+          {t(error)}
         </p>
       )}
 
@@ -219,7 +220,7 @@ export function PublishForm() {
         disabled={busy}
         className="btn-primary w-full sm:w-auto"
       >
-        {busy ? "Идёт загрузка…" : "Загрузить и просканировать"}
+        {busy ? t("Uploading…") : t("Upload and scan")}
       </button>
     </form>
   );
@@ -249,10 +250,10 @@ function uploadWithProgress(
         }
         resolve(json);
       } catch {
-        reject(new Error("Некорректный ответ сервера"));
+        reject(new Error("Invalid server response"));
       }
     };
-    xhr.onerror = () => reject(new Error("Сеть недоступна или сервер не ответил"));
+    xhr.onerror = () => reject(new Error("Network unavailable or the server did not respond"));
     xhr.send(data);
   });
 }
@@ -272,9 +273,10 @@ function Field({
   type?: string;
   disabled?: boolean;
 }) {
+  const t = useT();
   return (
     <label className="block space-y-2">
-      <span className="text-[13px] font-semibold text-ink">{label}</span>
+      <span className="text-[13px] font-semibold text-ink">{t(label)}</span>
       <input
         name={name}
         type={type}

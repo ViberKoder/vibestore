@@ -1,4 +1,7 @@
+"use client";
+
 import type { CSSProperties } from "react";
+import { useT } from "@/lib/i18n/client";
 import type { PublicStoreApp } from "@/lib/owner-auth";
 import type { ReleaseReadiness, StoreApp } from "@/lib/types";
 
@@ -9,23 +12,23 @@ const labels: Record<
   { text: string; className: string }
 > = {
   ready: {
-    text: "Проверено",
+    text: "Verified",
     className: "bg-green-soft text-green-ink",
   },
   needs_fixes: {
-    text: "На проверке",
+    text: "Under review",
     className: "bg-amber-soft text-amber-ink",
   },
   blocked: {
-    text: "Заблокировано",
+    text: "Blocked",
     className: "bg-red-soft text-red-ink",
   },
   scanning: {
-    text: "Сканирование",
+    text: "Scanning",
     className: "bg-black/[0.04] text-ink-2",
   },
   unknown: {
-    text: "Без отчёта",
+    text: "No report",
     className: "bg-black/[0.04] text-ink-2",
   },
 };
@@ -43,12 +46,13 @@ export function SafetyBadge({
   showScore?: boolean;
 }) {
   const key = readinessKey(app);
+  const t = useT();
   const cfg = labels[key];
   return (
     <span
       className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold tracking-[-0.01em] ${cfg.className}`}
     >
-      {cfg.text}
+      {t(cfg.text)}
       {showScore && typeof app.scan?.securityScore === "number" && (
         <span className="opacity-70">{app.scan.securityScore}</span>
       )}
@@ -63,6 +67,7 @@ export function ScoreRing({
   score: number;
   size?: number;
 }) {
+  const t = useT();
   const color =
     score >= 75 ? "var(--green)" : score >= 45 ? "var(--amber)" : "var(--red)";
   const r = 42;
@@ -106,7 +111,7 @@ export function ScoreRing({
           {score}
         </div>
         <div className="mt-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-ink-3">
-          score
+          {t("score")}
         </div>
       </div>
     </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useSyncExternalStore } from "react";
+import { useT } from "@/lib/i18n/client";
 
 type Theme = "light" | "dark";
 
@@ -47,6 +48,7 @@ function applyTheme(theme: Theme) {
 
 export function ThemeToggle() {
   const theme = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+  const t = useT();
 
   const toggle = useCallback(() => {
     applyTheme(theme === "dark" ? "light" : "dark");
@@ -57,8 +59,8 @@ export function ThemeToggle() {
       type="button"
       onClick={toggle}
       className="grid h-9 w-9 place-items-center rounded-full bg-[color-mix(in_srgb,var(--ink)_6%,transparent)] text-ink-2 transition hover:bg-[color-mix(in_srgb,var(--ink)_10%,transparent)] hover:text-ink"
-      aria-label={theme === "dark" ? "Светлая тема" : "Тёмная тема"}
-      title={theme === "dark" ? "Светлая тема" : "Тёмная тема"}
+      aria-label={theme === "dark" ? t("Light theme") : t("Dark theme")}
+      title={theme === "dark" ? t("Light theme") : t("Dark theme")}
     >
       {theme === "dark" ? <SunIcon /> : <MoonIcon />}
     </button>

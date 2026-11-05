@@ -1,6 +1,8 @@
 import Link from "next/link";
+import { getT } from "@/lib/i18n/server";
 
-export function SiteFooter() {
+export async function SiteFooter() {
+  const t = await getT();
   return (
     <footer className="mt-auto border-t border-[var(--line)] bg-bg">
       <div className="container-store flex flex-col gap-6 py-12 md:flex-row md:items-start md:justify-between">
@@ -14,28 +16,28 @@ export function SiteFooter() {
             </span>
           </div>
           <p className="mt-3 text-[13px] leading-relaxed text-ink-2">
-            Каталог вайбкодерских приложений с обязательной проверкой на
-            вирусы, трояны и стиллеры — до того, как файл попадёт к
-            пользователю.
+            {t(
+              "A catalog of vibe-coded apps with mandatory checks for viruses, trojans and stealers — before the file reaches users.",
+            )}
           </p>
         </div>
         <div className="grid grid-cols-2 gap-8 text-[13px] sm:grid-cols-3">
           <div className="space-y-2">
-            <p className="font-semibold text-ink">Магазин</p>
+            <p className="font-semibold text-ink">{t("Store")}</p>
             <Link href="/#catalog" className="block text-ink-2 hover:text-blue">
-              Каталог
+              {t("Catalog")}
             </Link>
             <Link href="/publish" className="block text-ink-2 hover:text-blue">
-              Опубликовать
+              {t("Publish")}
             </Link>
             <Link href="/dashboard" className="block text-ink-2 hover:text-blue">
-              Кабинет
+              {t("Dashboard")}
             </Link>
           </div>
           <div className="space-y-2">
-            <p className="font-semibold text-ink">Доверие</p>
+            <p className="font-semibold text-ink">{t("Trust")}</p>
             <Link href="/security" className="block text-ink-2 hover:text-blue">
-              Как мы сканируем
+              {t("How we scan")}
             </Link>
             <p className="text-ink-3">VirusTotal · ClamAV · VibeGuard</p>
           </div>

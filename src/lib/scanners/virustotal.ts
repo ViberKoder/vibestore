@@ -122,12 +122,12 @@ async function uploadFile(
     const urlRes = await vtFetch("/files/upload_url");
     if (!urlRes.ok) {
       throw new Error(
-        `VirusTotal upload_url failed ${urlRes.status} (нужен для файлов > 32 МБ)`,
+        `VirusTotal upload_url failed ${urlRes.status} (needed for files > 32 MB)`,
       );
     }
     const urlJson = (await urlRes.json()) as { data?: string };
     const uploadUrl = urlJson.data;
-    if (!uploadUrl) throw new Error("VirusTotal не вернул upload_url");
+    if (!uploadUrl) throw new Error("VirusTotal returned no upload_url");
     upload = await fetch(uploadUrl, {
       method: "POST",
       headers: { "x-apikey": vtKey()! },
@@ -142,7 +142,7 @@ async function uploadFile(
     throw new Error(`VirusTotal upload auth failed (${upload.status})`);
   }
   if (upload.status === 429) {
-    throw new Error("VirusTotal rate limit (public API 4 req/min) — подождите минуту и нажмите «Перепроверить»");
+    throw new Error("VirusTotal rate limit (public API 4 req/min) — wait a minute and press «Recheck»");
   }
   if (!upload.ok) {
     const body = await upload.text();
@@ -171,13 +171,13 @@ function pendingResult(
       id: "vt-pending",
       scanner: "virustotal",
       severity: "medium",
-      title: "VirusTotal ещё анализирует файл",
-      detail: `Файл «${fileName}» (~${mb} МБ) загружен в VirusTotal, но вендоры не успели вернуть вердикты. Это не детект вируса и не уязвимость — анализ крупного .exe часто занимает несколько минут.`,
+      title: "VirusTotal is still analyzing the file",
+      detail: `File «${fileName}» (~${mb} MB) was uploaded to VirusTotal, but the vendors have not returned verdicts yet. This is not a virus detection or a vulnerability — analyzing a large .exe often takes several minutes.`,
       category: "policy",
       meaning:
-        "Публичный API VirusTotal принимает файл, затем десятки антивирусов сканируют его асинхронно. Пока отчёт пустой — мы не знаем, чистый файл или нет по VT.",
+        "The public VirusTotal API accepts the file, then dozens of antivirus engines scan it asynchronously. While the report is empty we do not know whether the file is clean on VT.",
       action:
-        "Подождите 1–3 минуты и нажмите «Перепроверить VirusTotal». Либо откройте отчёт на VirusTotal по ссылке SHA256.",
+        "Wait 1–3 minutes and press «Recheck VirusTotal». Or open the report on VirusTotal via the SHA256 link.",
     },
   ];
   return {
@@ -186,7 +186,7 @@ function pendingResult(
     verdict: "error",
     score: 40,
     durationMs: Date.now() - started,
-    summary: `VirusTotal: анализ ещё идёт (~${mb} МБ). Это таймаут ожидания, не malware.`,
+    summary: `VirusTotal: analysis still in progress (~${mb} MB). This is a wait timeout, not malware.`,
     findings,
     meta: {
       mode: "pending-analysis",
@@ -215,28 +215,28 @@ function toResult(
       id: "vt-malicious",
       scanner: "virustotal",
       severity: stats.malicious >= 5 ? "critical" : "high",
-      title: `${stats.malicious} движков VirusTotal отметили malware`,
+      title: `${stats.malicious} VirusTotal engines flagged malware`,
       detail: names.length
-        ? `Популярные имена угроз: ${names.slice(0, 8).join(", ")}. Полный разбор: ${permalink}`
-        : `Смотрите разбор вендоров: ${permalink}`,
+        ? `Popular threat names: ${names.slice(0, 8).join(", ")}. Full report: ${permalink}`
+        : `See the vendor breakdown: ${permalink}`,
       category: "virus",
       meaning:
-        "Несколько независимых антивирусов в VirusTotal считают файл вредоносным (вирус, троян, стиллер и т.п.).",
+        "Several independent antivirus engines in VirusTotal consider the file malicious (virus, trojan, stealer, etc.).",
       action:
-        "Не публикуйте сборку. Проверьте цепочку сборки, зависимости и подпись кода. Сверьте отчёт на VirusTotal по вендорам.",
+        "Do not publish the build. Check the build chain, dependencies and code signature. Compare the VirusTotal vendor report.",
     });
   } else if ((stats.suspicious ?? 0) > 2) {
     findings.push({
       id: "vt-suspicious",
       scanner: "virustotal",
       severity: "medium",
-      title: `${stats.suspicious} движков отметили suspicious`,
-      detail: `Вендоры не уверены. Отчёт: ${permalink}`,
+      title: `${stats.suspicious} engines flagged suspicious`,
+      detail: `Vendors are not sure. Report: ${permalink}`,
       category: "other",
       meaning:
-        "Часть антивирусов видит подозрительное поведение, но это ещё не подтверждённый malware.",
+        "Some antivirus engines see suspicious behavior, but this is not confirmed malware yet.",
       action:
-        "Изучите отчёт VT, уберите упаковщики/ложные срабатывания, пересоберите и перепроверьте.",
+        "Review the VT report, remove packers/false positives, rebuild and recheck.",
     });
   }
 
@@ -261,7 +261,7 @@ function toResult(
     durationMs: Date.now() - started,
     summary:
       verdict === "clean"
-        ? `VirusTotal: чисто — ${stats.malicious} malicious / ${stats.suspicious ?? 0} suspicious / ${cleanish} clean.`
+        ? `VirusTotal: clean — ${stats.malicious} malicious / ${stats.suspicious ?? 0} suspicious / ${cleanish} clean.`
         : `VirusTotal (${mode}): ${stats.malicious} malicious / ${stats.suspicious ?? 0} suspicious / ${cleanish} clean.`,
     findings,
     meta: {
@@ -292,17 +292,17 @@ export async function runVirusTotal(
       verdict: "error",
       score: 0,
       durationMs: Date.now() - started,
-      summary: "VIRUSTOTAL_API_KEY не задан — публичный API недоступен.",
+      summary: "VIRUSTOTAL_API_KEY is not set — the public API is unavailable.",
       findings: [
         {
           id: "vt-no-key",
           scanner: "virustotal",
           severity: "high",
-          title: "VirusTotal не настроен",
-          detail: "Ключ API отсутствует на сервере.",
+          title: "VirusTotal is not configured",
+          detail: "The API key is missing on the server.",
           category: "policy",
-          meaning: "Без ключа мы не можем спросить VirusTotal.",
-          action: "Добавьте VIRUSTOTAL_API_KEY в окружение сервера.",
+          meaning: "Without a key we cannot query VirusTotal.",
+          action: "Add VIRUSTOTAL_API_KEY to the server environment.",
         },
       ],
       meta: { mode: "unavailable", sha256 },
@@ -377,19 +377,19 @@ export async function runVirusTotal(
       verdict: "error",
       score: 0,
       durationMs: Date.now() - started,
-      summary: `Ошибка VirusTotal: ${message}`,
+      summary: `VirusTotal error: ${message}`,
       findings: [
         {
           id: "vt-error",
           scanner: "virustotal",
           severity: "high",
-          title: "Сбой запроса к VirusTotal",
+          title: "VirusTotal request failed",
           detail: message.slice(0, 400),
           category: "policy",
           meaning:
-            "Это техническая ошибка API/сети, а не вердикт «файл заражён».",
+            "This is a technical API/network error, not a verdict that the file is infected.",
           action:
-            "Повторите скан кнопкой «Перепроверить VirusTotal». Если ошибка rate limit — подождите ~60 секунд.",
+            "Repeat the scan with the «Recheck VirusTotal» button. If it is a rate limit error — wait about 60 seconds.",
         },
       ],
       meta: { mode: "error", sha256 },

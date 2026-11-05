@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useCallback } from "react";
+import { useT } from "@/lib/i18n/client";
 import type { PublicStoreApp } from "@/lib/owner-auth";
 import { ScanProgressPanel } from "./scan-progress-panel";
 import { ScanReportView } from "./scan-report";
@@ -14,6 +15,7 @@ export function AppScanGate({
   forceScanning?: boolean;
 }) {
   const router = useRouter();
+  const t = useT();
   const scanning =
     forceScanning ||
     app.status === "scanning" ||
@@ -80,7 +82,7 @@ export function AppScanGate({
   return (
     <div className="space-y-4">
       <p className="text-[14px] text-ink-2">
-        Отчёт ещё не готов. Запускаем сканирование…
+        {t("The report is not ready yet. Starting the scan…")}
       </p>
       <ScanProgressPanel
         appId={app.id}

@@ -11,6 +11,7 @@ import type {
 } from "@/lib/types";
 import { PILLAR_META } from "@/lib/types";
 import { buildAgentPrompt } from "@/lib/scanners/agent-prompt";
+import { useT } from "@/lib/i18n/client";
 import { ScoreRing } from "./safety-badge";
 
 const verdictCopy: Record<
@@ -18,38 +19,38 @@ const verdictCopy: Record<
   { label: string; className: string; blurb: string }
 > = {
   clean: {
-    label: "Чисто",
+    label: "Clean",
     className: "text-green-ink",
-    blurb: "Угроз не найдено.",
+    blurb: "No threats found.",
   },
   suspicious: {
-    label: "Подозрительно",
+    label: "Suspicious",
     className: "text-amber-ink",
-    blurb: "Есть признаки риска.",
+    blurb: "Signs of risk.",
   },
   malicious: {
-    label: "Угроза",
+    label: "Threat",
     className: "text-red-ink",
-    blurb: "Движок считает файл вредоносным.",
+    blurb: "The engine considers the file malicious.",
   },
   error: {
-    label: "Не завершено",
+    label: "Incomplete",
     className: "text-amber-ink",
-    blurb: "Сбой / таймаут — это не malware.",
+    blurb: "Failure / timeout — this is not malware.",
   },
   skipped: {
-    label: "Пропуск",
+    label: "Skipped",
     className: "text-ink-3",
-    blurb: "Не применимо к типу файла.",
+    blurb: "Not applicable to this file type.",
   },
 };
 
-const severityRu: Record<string, string> = {
-  critical: "Критично",
-  high: "Высокий",
-  medium: "Средний",
-  low: "Низкий",
-  info: "Инфо",
+const severityLabel: Record<string, string> = {
+  critical: "Critical",
+  high: "High",
+  medium: "Medium",
+  low: "Low",
+  info: "Info",
 };
 
 function pillarTone(score: number): string {
@@ -83,6 +84,7 @@ export function ScanReportView({
   fileName?: string;
   compact?: boolean;
 }) {
+  const t = useT();
   const findings = report.engines.flatMap((e) =>
     e.findings.map((f) => ({ ...f, engine: e.displayName })),
   );
@@ -109,10 +111,10 @@ export function ScanReportView({
             Vibe Audit
           </p>
           <h2 className="mt-0.5 text-[18px] font-bold tracking-[-0.03em] text-ink md:text-[20px]">
-            {report.readinessLabel}
+            {t(report.readinessLabel)}
           </h2>
           <p className="mt-1 text-[13px] leading-snug text-ink-2">
-            {report.readinessHint}
+            {t(report.readinessHint)}
           </p>
         </div>
       </div>
@@ -122,10 +124,10 @@ export function ScanReportView({
       {vtPending && (
         <div className="rounded-xl border border-amber/30 bg-amber-soft px-3.5 py-3">
           <p className="text-[13px] font-semibold text-amber-ink">
-            VirusTotal ещё анализирует файл
+            {t("VirusTotal is still analyzing the file")}
           </p>
           <p className="mt-1 text-[12px] leading-relaxed text-ink-2">
-            Это таймаут, не детект malware. Подождите и перепроверьте.
+            {t("This is a timeout, not a malware detection. Wait and check again.")}
           </p>
           <div className="mt-2.5 flex flex-wrap gap-2">
             {appId && <RescanButton appId={appId} engine="virustotal" />}
@@ -145,7 +147,7 @@ export function ScanReportView({
 
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[12px] text-ink-3">
         <span>
-          Находки{" "}
+          {t("Findings")}{" "}
           <strong className="tabular-nums text-ink">{report.threatCount}</strong>
         </span>
         <span>
@@ -161,17 +163,17 @@ export function ScanReportView({
           </strong>
         </span>
         {appId && (
-          <RescanButton appId={appId} engine="all" label="Скан заново" />
+          <RescanButton appId={appId} engine="all" label={t("Rescan")} />
         )}
       </div>
 
       <section>
         <h3 className="text-[14px] font-semibold tracking-[-0.02em]">
-          Находки и промпт для AI
+          {t("Findings and an AI prompt")}
         </h3>
         {findings.length === 0 ? (
           <p className="mt-2 rounded-xl bg-green-soft px-3.5 py-2.5 text-[13px] text-green-ink">
-            Критичных находок нет.
+            {t("No critical findings.")}
           </p>
         ) : (
           <ul className="mt-2 space-y-2">
@@ -185,12 +187,12 @@ export function ScanReportView({
       <details className="group rounded-xl border border-[var(--line)]">
         <summary className="cursor-pointer list-none px-3.5 py-3 text-[13px] font-semibold tracking-[-0.01em] marker:content-none [&::-webkit-details-marker]:hidden">
           <span className="flex items-center justify-between gap-2">
-            Движки ({report.engines.length})
+            {t("Engines")} ({report.engines.length})
             <span className="text-[12px] font-medium text-ink-3 group-open:hidden">
-              развернуть
+              {t("expand")}
             </span>
             <span className="hidden text-[12px] font-medium text-ink-3 group-open:inline">
-              свернуть
+              {t("collapse")}
             </span>
           </span>
         </summary>
@@ -205,6 +207,7 @@ export function ScanReportView({
 }
 
 function PillarStrip({ pillars }: { pillars: AuditPillars }) {
+  const t = useT();
   return (
     <div className="grid grid-cols-5 gap-1.5">
       {PILLAR_META.map((meta) => {
@@ -213,10 +216,10 @@ function PillarStrip({ pillars }: { pillars: AuditPillars }) {
           <div
             key={meta.key}
             className="rounded-xl bg-bg px-1.5 py-2 text-center"
-            title={meta.subtitle}
+            title={t(meta.subtitle)}
           >
             <p className="text-[10px] font-semibold uppercase tracking-[0.04em] text-ink-3">
-              {meta.title}
+              {t(meta.title)}
             </p>
             <p
               className={`mt-0.5 text-[15px] font-bold tabular-nums tracking-[-0.03em] ${pillarTone(score)}`}
@@ -237,15 +240,16 @@ function PillarStrip({ pillars }: { pillars: AuditPillars }) {
 }
 
 function EngineRow({ engine }: { engine: EngineResult }) {
+  const t = useT();
   const v = verdictCopy[engine.verdict];
   return (
     <div className="flex items-start justify-between gap-3 rounded-lg px-2 py-2 hover:bg-bg">
       <div className="min-w-0">
-        <div className="text-[13px] font-medium">{engine.displayName}</div>
-        <div className="truncate text-[11px] text-ink-3">{engine.summary}</div>
+        <div className="text-[13px] font-medium">{t(engine.displayName)}</div>
+        <div className="truncate text-[11px] text-ink-3">{t(engine.summary)}</div>
       </div>
       <div className={`shrink-0 text-[11px] font-semibold ${v.className}`}>
-        {v.label} · {engine.score}
+        {t(v.label)} · {engine.score}
       </div>
     </div>
   );
@@ -268,6 +272,7 @@ function FindingCard({
     finding.severity === "critical" || finding.severity === "high",
   );
   const [copied, setCopied] = useState(false);
+  const t = useT();
   const prompt =
     finding.agentPrompt ??
     buildAgentPrompt(finding, appCtx);
@@ -300,14 +305,14 @@ function FindingCard({
                     : "text-ink-3"
               }
             >
-              {severityRu[finding.severity] ?? finding.severity}
+              {t(severityLabel[finding.severity] ?? finding.severity)}
             </span>
             <span className="normal-case tracking-normal text-ink-3">
-              {finding.engine}
+              {t(finding.engine)}
             </span>
           </div>
           <p className="mt-1 text-[14px] font-semibold tracking-[-0.01em]">
-            {finding.title}
+            {t(finding.title)}
           </p>
         </div>
         <span className="mt-1 shrink-0 text-[11px] text-ink-3">
@@ -317,25 +322,25 @@ function FindingCard({
       {open && (
         <div className="space-y-3 border-t border-[var(--line)] px-3.5 py-3">
           <p className="text-[13px] leading-relaxed text-ink-2">
-            {finding.detail}
+            {t(finding.detail)}
           </p>
           {finding.action && (
             <p className="text-[13px] leading-relaxed text-ink">
-              <span className="font-semibold text-blue">Что делать: </span>
-              {finding.action}
+              <span className="font-semibold text-blue">{t("What to do:")} </span>
+              {t(finding.action)}
             </p>
           )}
           <div className="rounded-xl bg-bg px-3 py-2.5">
             <div className="flex items-center justify-between gap-2">
               <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-3">
-                Промпт для AI-агента
+                {t("Prompt for an AI agent")}
               </p>
               <button
                 type="button"
                 onClick={copyPrompt}
                 className="btn-get !h-7 !min-w-0 !px-3 !text-[11px]"
               >
-                {copied ? "Скопировано" : "Копировать"}
+                {copied ? t("Copied") : t("Copy")}
               </button>
             </div>
             <pre className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap font-mono text-[11px] leading-relaxed text-ink-2">
@@ -358,6 +363,7 @@ function RescanButton({
   label?: string;
 }) {
   const router = useRouter();
+  const t = useT();
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -371,13 +377,13 @@ function RescanButton({
       });
       const json = (await res.json()) as { error?: string };
       if (!res.ok) {
-        setErr(json.error ?? "Не удалось перепроверить");
+        setErr(json.error ?? t("Recheck failed"));
         setBusy(false);
         return;
       }
       router.refresh();
     } catch {
-      setErr("Сеть недоступна");
+      setErr(t("Network unavailable"));
     } finally {
       setBusy(false);
     }
@@ -394,9 +400,9 @@ function RescanButton({
         {busy
           ? "…"
           : label ??
-            (engine === "virustotal" ? "Перепроверить VT" : "Скан заново")}
+            (engine === "virustotal" ? t("Recheck VT") : t("Rescan"))}
       </button>
-      {err && <span className="mt-0.5 text-[10px] text-red-ink">{err}</span>}
+      {err && <span className="mt-0.5 text-[10px] text-red-ink">{t(err)}</span>}
     </span>
   );
 }

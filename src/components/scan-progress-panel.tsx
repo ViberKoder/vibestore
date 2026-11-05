@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useT } from "@/lib/i18n/client";
 import type { ScanProgress, ScannerVerdict, StoreApp } from "@/lib/types";
 
 const verdictColor: Record<ScannerVerdict, string> = {
@@ -11,12 +12,12 @@ const verdictColor: Record<ScannerVerdict, string> = {
   skipped: "text-ink-3",
 };
 
-const verdictRu: Record<ScannerVerdict, string> = {
-  clean: "Чисто",
-  suspicious: "Подозрительно",
-  malicious: "Угроза",
-  error: "Ошибка",
-  skipped: "Пропуск",
+const verdictLabel: Record<ScannerVerdict, string> = {
+  clean: "Clean",
+  suspicious: "Suspicious",
+  malicious: "Threat",
+  error: "Error",
+  skipped: "Skipped",
 };
 
 export function ScanProgressPanel({
@@ -33,6 +34,7 @@ export function ScanProgressPanel({
   const [progress, setProgress] = useState<ScanProgress | undefined>(initial);
   const [error, setError] = useState<string | null>(null);
   const started = useRef(false);
+  const t = useT();
 
   useEffect(() => {
     let cancelled = false;
@@ -68,7 +70,7 @@ export function ScanProgressPanel({
       setProgress((p) =>
         p ?? {
           phase: "running",
-          label: "Запуск сканирования…",
+          label: "Starting the scan…",
           percent: 1,
           engines: [],
           updatedAt: new Date().toISOString(),
@@ -87,13 +89,13 @@ export function ScanProgressPanel({
         };
         if (cancelled) return;
         if (!res.ok && !json.alreadyRunning) {
-          setError(json.error ?? "Не удалось запустить скан");
+          setError(json.error ?? "Could not start the scan");
           return;
         }
         if (json.app?.scanProgress) setProgress(json.app.scanProgress);
         if (json.app?.scan) onFinished?.(json.app);
       } catch {
-        if (!cancelled) setError("Сеть недоступна при запуске скана");
+        if (!cancelled) setError("Network unavailable while starting the scan");
       }
     }
 
@@ -113,17 +115,17 @@ export function ScanProgressPanel({
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <p className="text-[12px] font-semibold uppercase tracking-[0.14em] text-ink-3">
-            Сканирование безопасности
+            {t("Security scan")}
           </p>
           <h2 className="mt-1 text-[22px] font-bold tracking-[-0.03em] text-ink">
             {failed
-              ? "Скан прерван"
+              ? t("Scan interrupted")
               : done
-                ? "Скан завершён"
-                : "Идёт проверка сборки"}
+                ? t("Scan complete")
+                : t("Checking the build")}
           </h2>
           <p className="mt-1 text-[14px] text-ink-2">
-            {error ?? progress?.label ?? "Подготовка…"}
+            {t(error ?? progress?.label ?? "Preparing…")}
           </p>
         </div>
         <div className="text-right">
@@ -131,7 +133,7 @@ export function ScanProgressPanel({
             {percent}%
           </div>
           <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-3">
-            прогресс
+            {t("progress")}
           </div>
         </div>
       </div>
@@ -158,24 +160,24 @@ export function ScanProgressPanel({
             <EngineGlyph phase={engine.phase} />
             <div className="min-w-0 flex-1">
               <div className="text-[14px] font-semibold tracking-[-0.01em]">
-                {engine.displayName}
+                {t(engine.displayName)}
               </div>
               {engine.summary && (
                 <div className="mt-0.5 truncate text-[12px] text-ink-2">
-                  {engine.summary}
+                  {t(engine.summary)}
                 </div>
               )}
             </div>
             <div className="shrink-0 text-right text-[12px] font-semibold">
               {engine.phase === "pending" && (
-                <span className="text-ink-3">Ожидает</span>
+                <span className="text-ink-3">{t("Waiting")}</span>
               )}
               {engine.phase === "running" && (
-                <span className="text-blue">Сканирует…</span>
+                <span className="text-blue">{t("Scanning…")}</span>
               )}
               {engine.phase === "done" && engine.verdict && (
                 <span className={verdictColor[engine.verdict]}>
-                  {verdictRu[engine.verdict]}
+                  {t(verdictLabel[engine.verdict])}
                 </span>
               )}
             </div>
@@ -185,9 +187,7 @@ export function ScanProgressPanel({
 
       {!done && !failed && (
         <p className="mt-5 text-[12px] text-ink-3">
-          VirusTotal · ClamAV · ClamWin · VibeGuard и другие движки идут по
-          очереди. Не закрывайте вкладку — прогресс обновляется в реальном
-          времени.
+          {t("VirusTotal · ClamAV · ClamWin · VibeGuard and other engines run one after another. Keep this tab open — progress updates in real time.")}
         </p>
       )}
     </div>

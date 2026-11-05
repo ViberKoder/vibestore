@@ -2,17 +2,19 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { LanguageSwitcher, useT } from "@/lib/i18n/client";
 import { ThemeToggle } from "./theme-toggle";
 
 const links = [
-  { href: "/", label: "Обзор" },
-  { href: "/#catalog", label: "Каталог" },
-  { href: "/security", label: "Безопасность" },
-  { href: "/dashboard", label: "Кабинет" },
+  { href: "/", label: "Overview" },
+  { href: "/#catalog", label: "Catalog" },
+  { href: "/security", label: "Security" },
+  { href: "/dashboard", label: "Dashboard" },
 ];
 
 export function SiteHeader() {
   const pathname = usePathname();
+  const t = useT();
 
   return (
     <header className="sticky top-0 z-40 border-b border-[var(--line)] bg-[color-mix(in_srgb,var(--bg)_78%,transparent)] backdrop-blur-xl">
@@ -42,19 +44,20 @@ export function SiteHeader() {
                       : "text-ink-2 hover:text-ink"
                   }`}
                 >
-                  {l.label}
+                  {t(l.label)}
                 </Link>
               );
             })}
           </nav>
         </div>
         <div className="flex items-center gap-2">
+          <LanguageSwitcher />
           <ThemeToggle />
           <Link
             href="/publish"
             className="btn-get !h-9 !min-w-0 !px-4 !text-[13px]"
           >
-            Опубликовать
+            {t("Publish")}
           </Link>
         </div>
       </div>

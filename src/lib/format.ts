@@ -5,6 +5,7 @@ export function formatBytes(n: number): string {
   return `${(n / 1024 ** 3).toFixed(2)} GB`;
 }
 
-export function formatNumber(n: number): string {
-  return new Intl.NumberFormat("ru-RU").format(n);
+/** Locale-aware thousands separators: "en" → 1,234 / "ru" → 1 234. */
+export function formatNumber(n: number, locale: string = "en"): string {
+  return new Intl.NumberFormat(locale === "ru" ? "ru-RU" : "en-US").format(n);
 }

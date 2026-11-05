@@ -1,62 +1,65 @@
 import Link from "next/link";
+import { getT } from "@/lib/i18n/server";
 
 const engines = [
   {
     name: "VirusTotal",
     blurb:
-      "Мультивендорный агрегат. При VIRUSTOTAL_API_KEY — живой запрос по SHA256, иначе локальная эмуляция консенсуса.",
+      "Multi-vendor aggregate. With VIRUSTOTAL_API_KEY — a live lookup by SHA256, otherwise a local consensus emulation.",
   },
   {
     name: "ClamAV",
     blurb:
-      "Open-source антивирус. Native clamscan при наличии, иначе слой эмуляции сигнатур.",
+      "Open-source antivirus. Native clamscan when available, otherwise a signature emulation layer.",
   },
   {
     name: "ClamWin",
     blurb:
-      "Windows-ориентированный проход на сигнатурах ClamAV для .exe/.dll/.msi.",
+      "Windows-oriented pass with ClamAV signatures for .exe/.dll/.msi.",
   },
   {
     name: "VibeGuard",
     blurb:
-      "Собственные правила: Discord/Telegram эксфиль, cookie-пути, крипто-кошельки, keylogger API.",
+      "Our own rules: Discord/Telegram exfiltration, cookie paths, crypto wallets, keylogger APIs.",
   },
   {
     name: "Entropy Analyzer",
-    blurb: "Shannon entropy — packed/encrypted payload и обфускация.",
+    blurb: "Shannon entropy — packed/encrypted payloads and obfuscation.",
   },
   {
     name: "PE Inspector",
     blurb:
-      "MZ/PE, секции, смесь network + credential импортов, фейковые document.exe.",
+      "MZ/PE, sections, a mix of network and credential imports, fake document.exe files.",
   },
   {
     name: "Network Sink Scanner",
-    blurb: "URL из бинарника: ngrok, pastebin, Discord webhooks, Telegram bot API.",
+    blurb: "URLs in the binary: ngrok, pastebin, Discord webhooks, Telegram bot API.",
   },
   {
     name: "Web Static Auditor",
-    blurb: "HTML/JS: cookie exfil, eval, DOM XSS, сторонние скрипты без SRI.",
+    blurb: "HTML/JS: cookie exfiltration, eval, DOM XSS, third-party scripts without SRI.",
   },
 ];
 
-export default function SecurityPage() {
+export default async function SecurityPage() {
+  const t = await getT();
   return (
     <main className="flex-1 pb-20 pt-8 md:pt-12">
       <div className="container-store">
         <div className="fade-up max-w-2xl">
           <p className="text-[13px] font-semibold uppercase tracking-[0.14em] text-ink-3">
-            Безопасность
+            {t("Security")}
           </p>
           <h1 className="mt-2 text-[36px] font-extrabold tracking-[-0.045em] md:text-[48px]">
-            Почему скачивать здесь спокойнее
+            {t("Why downloading here is safer")}
           </h1>
           <p className="mt-4 text-[17px] leading-relaxed text-ink-2">
-            Каждая сборка проходит конвейер антивирусов и собственных эвристик.
-            Пользователь видит score. Разработчик — можно ли выпускать в массы.
+            {t(
+              "Every build goes through a pipeline of antivirus engines and our own heuristics. Users see a score. Developers see whether the build can go out to everyone.",
+            )}
           </p>
           <Link href="/publish" className="btn-primary mt-7 inline-flex">
-            Проверить свою сборку
+            {t("Check your build")}
           </Link>
         </div>
 
@@ -71,10 +74,10 @@ export default function SecurityPage() {
               </div>
               <div>
                 <h2 className="text-[18px] font-bold tracking-[-0.02em]">
-                  {e.name}
+                  {t(e.name)}
                 </h2>
                 <p className="mt-1 max-w-2xl text-[14px] leading-relaxed text-ink-2">
-                  {e.blurb}
+                  {t(e.blurb)}
                 </p>
               </div>
             </li>
@@ -83,19 +86,19 @@ export default function SecurityPage() {
 
         <div className="fade-up-d2 mt-12 grid gap-4 md:grid-cols-3">
           <Verdict
-            title="Ready"
+            title={t("Ready")}
             tone="ready"
-            text="Score ≥ 75, нет critical/high — можно в массы."
+            text={t("Score ≥ 75, no critical/high findings — can go out to everyone.")}
           />
           <Verdict
-            title="Needs fixes"
+            title={t("Needs fixes")}
             tone="warn"
-            text="Есть подозрения — карантин, скачивание с предупреждением."
+            text={t("Something is suspicious — quarantined, downloads come with a warning.")}
           />
           <Verdict
-            title="Blocked"
+            title={t("Blocked")}
             tone="danger"
-            text="Malware/stealer consensus — скачивание закрыто."
+            text={t("Malware or stealer consensus — downloads are closed.")}
           />
         </div>
       </div>

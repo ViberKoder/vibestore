@@ -1,8 +1,12 @@
+"use client";
+
 import Link from "next/link";
 import type { StoreApp } from "@/lib/types";
+import { useT } from "@/lib/i18n/client";
 import { AppIcon } from "./app-icon";
 
 export function FeaturedCard({ app }: { app: StoreApp }) {
+  const t = useT();
   return (
     <Link
       href={`/apps/${app.slug}`}
@@ -23,7 +27,7 @@ export function FeaturedCard({ app }: { app: StoreApp }) {
         <div className="relative flex min-h-[320px] flex-col justify-between p-6 pb-0 md:min-h-[380px] md:p-10 md:pb-0">
           <div className="max-w-xl">
             <p className="text-[12px] font-semibold uppercase tracking-[0.16em] text-white/65">
-              Приложение дня
+              {t("App of the day")}
             </p>
             <h2 className="mt-3 text-[34px] font-extrabold leading-[1.05] tracking-[-0.045em] text-white md:text-[48px]">
               {app.name}
@@ -41,11 +45,11 @@ export function FeaturedCard({ app }: { app: StoreApp }) {
               </div>
               <div className="truncate text-[12px] text-white/60">
                 {app.category}
-                {app.scan ? ` · Score ${app.scan.securityScore}` : ""}
+                {app.scan ? ` · ${t("Score")} ${app.scan.securityScore}` : ""}
               </div>
             </div>
             <span className="inline-flex h-[30px] shrink-0 items-center rounded-full bg-white px-4 text-[13px] font-semibold text-blue transition group-hover:bg-white/90">
-              Смотреть
+              {t("View")}
             </span>
           </div>
         </div>

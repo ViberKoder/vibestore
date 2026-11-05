@@ -2,6 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { fill } from "@/lib/i18n/core";
+import { useT } from "@/lib/i18n/client";
 
 type Status = {
   isOwner: boolean;
@@ -22,6 +24,7 @@ export function OwnerGate({
   children: React.ReactNode;
 }) {
   const router = useRouter();
+  const t = useT();
   const [status, setStatus] = useState<Status | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -66,7 +69,7 @@ export function OwnerGate({
       });
       const json = (await res.json()) as { error?: string };
       if (!res.ok) {
-        setError(json.error ?? "Не удалось привязать");
+        setError(json.error ?? t("Could not link the app"));
         setBusy(false);
         return;
       }
@@ -79,7 +82,7 @@ export function OwnerGate({
       setBusy(false);
       router.refresh();
     } catch {
-      setError("Сеть недоступна");
+      setError(t("Network unavailable"));
       setBusy(false);
     }
   }
@@ -100,7 +103,7 @@ export function OwnerGate({
       });
       const json = (await res.json()) as { error?: string };
       if (!res.ok) {
-        setError(json.error ?? "Не удалось восстановить");
+        setError(json.error ?? t("Could not restore access"));
         setBusy(false);
         return;
       }
@@ -113,14 +116,14 @@ export function OwnerGate({
       setBusy(false);
       router.refresh();
     } catch {
-      setError("Сеть недоступна");
+      setError(t("Network unavailable"));
       setBusy(false);
     }
   }
 
   if (!status) {
     return (
-      <p className="text-[14px] text-ink-2">Проверяем доступ…</p>
+      <p className="text-[14px] text-ink-2">{t("Checking access…")}</p>
     );
   }
 
@@ -133,16 +136,20 @@ export function OwnerGate({
       <div className="space-y-4">
         <div>
           <h2 className="text-[18px] font-bold tracking-[-0.02em]">
-            Привязать управление
+            {t("Link management")}
           </h2>
           <p className="mt-2 text-[14px] leading-relaxed text-ink-2">
-            «{appName}» ещё не привязано к браузеру. Если это ваше приложение —
-            привяжите его сюда.
+            {fill(
+              t(
+                "«{name}» is not linked to this browser yet. If this is your app, link it here.",
+              ),
+              { name: appName },
+            )}
           </p>
         </div>
         {error && (
           <p className="rounded-2xl bg-red-soft px-4 py-3 text-[13px] text-red-ink">
-            {error}
+            {t(error)}
           </p>
         )}
         <button
@@ -151,7 +158,7 @@ export function OwnerGate({
           disabled={busy}
           className="btn-primary"
         >
-          {busy ? "Привязываем…" : "Это моё приложение"}
+          {busy ? t("Linking…") : t("This is my app")}
         </button>
       </div>
     );
@@ -161,33 +168,36 @@ export function OwnerGate({
     <form onSubmit={restore} className="space-y-4">
       <div>
         <h2 className="text-[18px] font-bold tracking-[-0.02em]">
-          Восстановить доступ
+          {t("Restore access")}
         </h2>
         <p className="mt-2 text-[14px] leading-relaxed text-ink-2">
-          Cookie мог слететь после смены адреса туннеля или очистки браузера.
-          Введите имя разработчика с карточки «{appName}», чтобы снова привязать
-          управление к этому браузеру.
+          {fill(
+            t(
+              "The cookie may have been lost after the tunnel address changed or the browser was cleared. Enter the developer name from the «{name}» app page to link management to this browser again.",
+            ),
+            { name: appName },
+          )}
         </p>
       </div>
       <label className="block space-y-2">
         <span className="text-[13px] font-semibold text-ink">
-          Имя разработчика
+          {t("Developer name")}
         </span>
         <input
           value={nameInput}
           onChange={(e) => setNameInput(e.target.value)}
           className="field-input"
-          placeholder="Как в карточке приложения"
+          placeholder={t("As on the app page")}
           required
         />
       </label>
       {error && (
         <p className="rounded-2xl bg-red-soft px-4 py-3 text-[13px] text-red-ink">
-          {error}
+          {t(error)}
         </p>
       )}
       <button type="submit" disabled={busy} className="btn-primary">
-        {busy ? "Восстанавливаем…" : "Восстановить на этом браузере"}
+        {busy ? t("Restoring…") : t("Restore on this browser")}
       </button>
     </form>
   );

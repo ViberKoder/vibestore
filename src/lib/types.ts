@@ -223,27 +223,27 @@ export const PILLAR_META: Array<{
   {
     key: "safety",
     title: "Safety",
-    subtitle: "Вирусы, трояны, стиллеры",
+    subtitle: "Viruses, trojans, stealers",
   },
   {
     key: "privacy",
     title: "Privacy",
-    subtitle: "Трекеры и чувствительные API",
+    subtitle: "Trackers and sensitive APIs",
   },
   {
     key: "hardening",
     title: "Hardening",
-    subtitle: "Взлом, секреты, Electron",
+    subtitle: "Exploits, secrets, Electron",
   },
   {
     key: "integrity",
     title: "Integrity",
-    subtitle: "Подпись, подмена, упаковка",
+    subtitle: "Signature, spoofing, packing",
   },
   {
     key: "device",
     title: "Device",
-    subtitle: "Тормоза, майнинг, автозапуск",
+    subtitle: "Slowdowns, mining, autostart",
   },
 ];
 

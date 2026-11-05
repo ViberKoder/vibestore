@@ -38,7 +38,7 @@ export async function POST(
     await updateScanProgress(app.id, {
       ...initialScanProgress(),
       phase: "running",
-      label: "Запуск конвейера антивирусов…",
+      label: "Starting the antivirus pipeline…",
       percent: 1,
     });
 
@@ -50,7 +50,7 @@ export async function POST(
         status: "rejected",
         scanProgress: {
           phase: "error",
-          label: "Файл сборки не найден на диске",
+          label: "Build file not found on disk",
           percent: 0,
           engines: [],
           error: "missing file",
@@ -99,7 +99,7 @@ export async function POST(
       status: "quarantined",
       scanProgress: {
         phase: "error",
-        label: `Ошибка сканирования: ${message}`,
+        label: `Scan error: ${message}`,
         percent: 0,
         engines: app.scanProgress?.engines ?? [],
         error: message,

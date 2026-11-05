@@ -97,7 +97,7 @@ async function scanWithClamscan(
     return {
       kind: "error",
       message:
-        "ClamAV DB: clamd и clamscan недоступны — антивирус нельзя обходить эмуляцией.",
+        "ClamAV DB: clamd and clamscan are unavailable — the antivirus must not be bypassed by emulation.",
     };
   }
   try {
@@ -142,7 +142,7 @@ function infectedResult(
       scanner,
       severity: "critical",
       title: `${displayName}: ${signature}`,
-      detail: `Нативная сигнатура из базы ClamAV (${engine}).`,
+      detail: `Native signature from the ClamAV database (${engine}).`,
       category: /stealer|trojan|spyware/i.test(signature)
         ? /stealer/i.test(signature)
           ? "stealer"
@@ -156,7 +156,7 @@ function infectedResult(
     verdict: "malicious",
     score: 0,
     durationMs: Date.now() - started,
-    summary: `${displayName} обнаружил угрозу: ${signature}`,
+    summary: `${displayName} detected a threat: ${signature}`,
     findings,
     meta: { mode: "native", engine, signature },
   };
@@ -199,7 +199,7 @@ function errorResult(
         id: `${scanner}-error`,
         scanner,
         severity: "high",
-        title: `${displayName} недоступен`,
+        title: `${displayName} unavailable`,
         detail: message,
         category: "policy",
       },
@@ -226,7 +226,7 @@ export async function runClamSuite(
         "ClamAV",
         started,
         outcome.engine,
-        "ClamAV (native): известных сигнатур не найдено.",
+        "ClamAV (native): no known signatures found.",
       );
     }
     if (outcome.kind === "infected") {
@@ -245,8 +245,8 @@ export async function runClamSuite(
         started,
         outcome.engine,
         isWindows
-          ? "ClamWin/ClamAV DB (native): Windows-сборка чистая по сигнатурам."
-          : "ClamWin/ClamAV DB (native): сигнатур не найдено.",
+          ? "ClamWin/ClamAV DB (native): Windows build is clean by signatures."
+          : "ClamWin/ClamAV DB (native): no signatures found.",
       );
     }
     if (outcome.kind === "infected") {
