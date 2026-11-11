@@ -12,7 +12,7 @@ export async function SiteFooter() {
               V
             </span>
             <span className="text-[15px] font-bold tracking-[-0.02em]">
-              Vibe Store
+              Vibe Apps
             </span>
           </div>
           <p className="mt-3 text-[13px] leading-relaxed text-ink-2">
@@ -44,7 +44,7 @@ export async function SiteFooter() {
         </div>
       </div>
       <div className="container-store border-t border-[var(--line)] py-5 text-[12px] text-ink-3">
-        © {new Date().getFullYear()} Vibe Store
+        © {new Date().getFullYear()} Vibe Apps
       </div>
     </footer>
   );

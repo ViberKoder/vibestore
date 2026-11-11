@@ -26,7 +26,7 @@ export function SiteHeader() {
               V
             </span>
             <span className="text-[17px] font-bold tracking-[-0.03em] text-ink">
-              Vibe Store
+              Vibe Apps
             </span>
           </Link>
           <nav className="hidden items-center gap-1 md:flex">

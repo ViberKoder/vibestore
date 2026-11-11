@@ -1,5 +1,6 @@
 import type {
   EngineResult,
+  ScanCoverage,
   ReleaseReadiness,
   ScanEngineProgress,
   ScanProgress,
@@ -293,6 +294,8 @@ export async function finalizeReport(
   const finishedAt = new Date().toISOString();
   await onDone?.(ready.readinessLabel);
 
+  const coverage = buildCoverage(resultsWithPrompts, ctx.kind);
+
   return {
     id: `scan_${Date.now().toString(36)}`,
     startedAt,
@@ -302,6 +305,7 @@ export async function finalizeReport(
     trustScore,
     pillars,
     ...ready,
+    coverage,
     threatCount: findings.length,
     criticalCount: findings.filter((f) => f.severity === "critical").length,
     highCount: findings.filter((f) => f.severity === "high").length,
@@ -314,4 +318,25 @@ export function statusFromReport(
   if (report.readiness === "blocked") return "rejected";
   if (report.readiness === "needs_fixes") return "quarantined";
   return "published";
+}
+
+/** Honest scope of a report: what ran, what was skipped or unavailable, and what is never verified. */
+export function buildCoverage(engines: EngineResult[], kind: string): ScanCoverage {
+  const count = (v: EngineResult["verdict"]) => engines.filter((e) => e.verdict === v).length;
+  const unavailable = engines.filter((e) => e.verdict === "error").length;
+  const notVerified = [
+    "Runtime behaviour: nothing is executed, so keyloggers, injection and persistence are not observed",
+    "Dependency vulnerabilities (CVE/OSV): library versions are not matched against advisories yet",
+    "Device impact under load: CPU/RAM are not measured",
+    "Obfuscated or minified code: intent is not decided, only patterns are matched",
+  ];
+  if (kind === "desktop") notVerified.push("Installer contents (NSIS/MSI) are not unpacked, only the outer file is checked");
+  return {
+    total: engines.length,
+    passed: count("clean"),
+    flagged: count("suspicious") + count("malicious"),
+    skipped: count("skipped"),
+    unavailable,
+    notVerified,
+  };
 }

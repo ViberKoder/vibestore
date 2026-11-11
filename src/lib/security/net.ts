@@ -110,7 +110,7 @@ function requestOnce(
       {
         method: opts.method ?? "GET",
         headers: {
-          "User-Agent": "VibeStoreChecker/1.0 (+security scan)",
+          "User-Agent": "VibeAppsChecker/1.0 (+security scan)",
           Accept: "*/*",
           ...(headers ?? {}),
         },

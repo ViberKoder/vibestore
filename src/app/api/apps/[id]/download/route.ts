@@ -44,8 +44,8 @@ export async function GET(
             "Content-Length": String(stat.size),
             "Content-Disposition": contentDisposition(app.fileName),
           "X-Content-Type-Options": "nosniff",
-            "X-VibeStore-SHA256": app.sha256,
-            "X-VibeStore-Score": String(app.scan?.securityScore ?? ""),
+            "X-VibeApps-SHA256": app.sha256,
+            "X-VibeApps-Score": String(app.scan?.securityScore ?? ""),
           },
         });
       }
@@ -56,7 +56,7 @@ export async function GET(
 
   const demo = Buffer.from(
     [
-      "Vibe Store demo download",
+      "Vibe Apps demo download",
       `App: ${app.name}`,
       `Version: ${app.version}`,
       `SHA256: ${app.sha256}`,
@@ -73,7 +73,7 @@ export async function GET(
     headers: {
       "Content-Type": "text/plain; charset=utf-8",
       "Content-Disposition": `attachment; filename="${app.slug}-vibestore.txt"`,
-      "X-VibeStore-SHA256": app.sha256,
+      "X-VibeApps-SHA256": app.sha256,
     },
   });
 }

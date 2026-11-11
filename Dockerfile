@@ -1,4 +1,4 @@
-# Vibe Store for Railway (or any Docker host).
+# Vibe Apps for Railway (or any Docker host).
 # ClamAV is installed natively: without it every scan would be "unavailable"
 # and the store would block all uploads (by design — no emulation fallback).
 FROM node:22-bookworm-slim

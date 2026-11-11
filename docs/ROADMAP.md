@@ -1,4 +1,4 @@
-# Vibe Store — security roadmap
+# Vibe Apps — security roadmap
 
 The original plan (Stage A → B → C) was recovered from the project history and
 brought up to date. Status is stated per item; nothing marked "done" is
@@ -52,3 +52,42 @@ and a Device Impact Score into the existing pillars without UI changes.
   branch/tag/commit goes through the same scanners. Ownership is tied to the
   GitHub account. Tokens stay on the server, in memory, and are never sent to
   the archive host after the first request.
+
+## Product direction: an independent auditor (Vibe Apps)
+
+The goal: an independent auditor that answers four questions about a build:
+
+1. Is the code free of known-malicious and dangerous behaviour?
+2. Can it harm users (stealing data, tracking, scams)?
+3. Can the app be broken into (insecure runtime, outdated components, known CVEs)?
+4. Does it slow the device down (CPU, RAM, disk, autostart)?
+
+**What "100% safe" can and cannot mean.** No static or dynamic analysis proves
+that software is free of all bugs or backdoors. Vibe Apps therefore does not
+publish a "100% safe" verdict. Every report states its coverage: how many
+checks ran, which passed, which were not applicable or unavailable, and what is
+never verified (see the "Not verified by this report" block). The verdict
+means "no blocking findings in the checks listed", and the report says so.
+
+### What each question depends on today
+
+| Question | Covered now | Missing (and what it needs) |
+| --- | --- | --- |
+| 1. Malicious code | signatures (ClamAV, VirusTotal, VibeGuard), blocklist, Stage A unpacking | runtime behaviour → sandbox (Stage B) |
+| 2. Harm to users | trackers, ad networks, C2-style endpoints, password forms, mixed content | consent/UX review stays manual |
+| 3. Breakable | Electron flags, end-of-life runtime, secrets, HTTP/TLS/headers | dependency CVEs → OSV lookup (next step) |
+| 4. Device slowdown | size, native modules, miner/autostart heuristics | measured CPU/RAM → sandbox (Stage B) |
+
+### Next steps, in order
+
+1. **Dependency CVEs (OSV).** Parse `package-lock.json` / `package.json` found
+   inside the package and ZIP sources, query the OSV API (`api.osv.dev`), and
+   report advisories with severity. Needs outbound access from the server.
+2. **Source pinning for imports.** Record the Git commit SHA of every imported
+   repository in the report, so a verdict refers to exact source.
+3. **Stage B sandbox.** A Windows VM or microVM runner that executes the build
+   for 60 seconds and reports file writes, network destinations, processes,
+   keyboard hooks and idle CPU/RAM. Needs a host with virtualisation; the report
+   model already accepts such results as engines.
+4. **Public verification log.** Keep scan history per build hash, so a later
+   change in verdict is visible instead of silent.

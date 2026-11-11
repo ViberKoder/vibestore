@@ -47,7 +47,7 @@ export default async function Home({
           </h1>
           <p className="mt-4 max-w-xl text-[17px] leading-relaxed text-ink-2 md:text-[19px]">
             {t(
-              "Vibe Store is a catalog of vibe-coded programs and websites. Every build goes through VirusTotal, ClamAV and our own checks before it is published.",
+              "Vibe Apps is a catalog of vibe-coded programs and websites. Every build goes through VirusTotal, ClamAV and our own checks before it is published.",
             )}
           </p>
           <div className="mt-7 flex flex-wrap gap-3">

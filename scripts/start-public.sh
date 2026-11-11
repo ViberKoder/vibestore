@@ -49,7 +49,7 @@ for i in $(seq 1 45); do
   if [[ -n "${URL:-}" ]]; then
     echo ""
     echo "============================================"
-    echo " Public Vibe Store: $URL"
+    echo " Public Vibe Apps: $URL"
     echo " Engines:           $URL/api/engines"
     echo "============================================"
     echo "$URL" > /tmp/vibestore-public-url.txt

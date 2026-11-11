@@ -137,6 +137,22 @@ export interface ScanReport {
   criticalCount: number;
   highCount: number;
   consensus: string;
+  /** What this report did and did not verify. Shown next to every verdict. */
+  coverage?: ScanCoverage;
+}
+
+export interface ScanCoverage {
+  total: number;
+  /** Checks that ran and found nothing blocking */
+  passed: number;
+  /** Checks that produced findings (any severity) */
+  flagged: number;
+  /** Checks skipped because they do not apply to this artifact */
+  skipped: number;
+  /** Checks that could not run (missing key, service error, unreadable input) */
+  unavailable: number;
+  /** Things this tool does not verify at all, whatever the verdict */
+  notVerified: string[];
 }
 
 export interface StoreApp {

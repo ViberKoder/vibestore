@@ -22,7 +22,7 @@ export function buildAgentPrompt(
   return [
     `# Vibe Audit fix task`,
     ``,
-    `You are fixing a security / quality finding from Vibe Store audit for the app **${app.name}** (${app.kind}, file \`${app.fileName}\`, v${app.version}).`,
+    `You are fixing a security / quality finding from Vibe Apps audit for the app **${app.name}** (${app.kind}, file \`${app.fileName}\`, v${app.version}).`,
     app.tagline ? `Product: ${app.tagline}` : null,
     ``,
     `## Finding`,

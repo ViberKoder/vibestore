@@ -58,7 +58,7 @@ async function fetchArchive(start: string, token: string): Promise<Response> {
   for (let hop = 0; hop < 5; hop++) {
     const first = hop === 0;
     const res = await fetch(url, {
-      headers: first ? { ...apiHeaders(token), Accept: "application/vnd.github+json" } : { "User-Agent": "VibeStore/1.0" },
+      headers: first ? { ...apiHeaders(token), Accept: "application/vnd.github+json" } : { "User-Agent": "VibeApps/1.0" },
       redirect: "manual",
       cache: "no-store",
     });
