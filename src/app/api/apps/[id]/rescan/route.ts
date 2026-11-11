@@ -7,6 +7,8 @@ import {
   statusFromReport,
 } from "@/lib/scanners/pipeline";
 import { runVirusTotal } from "@/lib/scanners/virustotal";
+import { isAppOwner } from "@/lib/owner-auth";
+import { limitRequest } from "@/lib/security/rate-limit";
 import {
   getAppById,
   getAppBySlug,
@@ -21,10 +23,15 @@ export async function POST(
   req: Request,
   ctx: { params: Promise<{ id: string }> },
 ) {
+  const limited = limitRequest(req, "scan");
+  if (limited) return limited;
   const { id } = await ctx.params;
   const app = (await getAppById(id)) ?? (await getAppBySlug(id));
   if (!app) {
     return NextResponse.json({ error: "App not found" }, { status: 404 });
+  }
+  if (!isAppOwner(app, req.headers.get("cookie"))) {
+    return NextResponse.json({ error: "Only the uploader can re-run the scan." }, { status: 403 });
   }
   if (!app.filePath) {
     return NextResponse.json({ error: "No file on disk" }, { status: 400 });

@@ -21,7 +21,12 @@ export type ScannerId =
   | "electron-hardening"
   | "privacy"
   | "device-footprint"
-  | "integrity";
+  | "integrity"
+  | "archive"
+  | "blocklist"
+  | "http-security"
+  | "url-reputation"
+  | "static-audit";
 
 export type ScannerVerdict =
   | "clean"
@@ -165,6 +170,8 @@ export interface StoreApp {
   iconUrl?: string;
   /** Browser developer id of the uploader — never expose to clients */
   ownerId?: string;
+  /** GitHub account that uploaded or imported the app (set when signed in). */
+  ownerGithub?: { id: number; login: string };
   /** @deprecated removed — kept optional for old store.json cleanup */
   ownerKeyHash?: string;
   scan?: ScanReport;
@@ -213,6 +220,10 @@ export const SCAN_ENGINE_ORDER: Array<{
   { scanner: "privacy", displayName: "Privacy Auditor" },
   { scanner: "integrity", displayName: "Integrity Auditor" },
   { scanner: "device-footprint", displayName: "Device Footprint" },
+  // Stage B: structural and known-bad checks
+  { scanner: "archive", displayName: "Archive & type inspector" },
+  { scanner: "blocklist", displayName: "Blocklist" },
+  { scanner: "static-audit", displayName: "Static auditor (Stage A)" },
 ];
 
 export const PILLAR_META: Array<{

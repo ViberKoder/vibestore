@@ -26,6 +26,9 @@ import {
 import { enrichFindingsWithPrompts } from "./agent-prompt";
 import { computeAuditPillars, trustFromPillars } from "./pillars";
 import { runVirusTotal } from "./virustotal";
+import { runArchiveEngine, runBlocklistEngine } from "./security-engines";
+import { runStaticAuditor } from "./static-audit";
+import { sha256Buffer } from "../hash";
 
 function readinessFrom(
   score: number,
@@ -153,6 +156,9 @@ export async function runScanPipeline(opts: {
     { scanners: ["privacy"], run: async () => [await runPrivacyAuditor(opts.buffer)] },
     { scanners: ["integrity"], run: async () => [await runIntegrityAuditor(opts.buffer, opts.fileName)] },
     { scanners: ["device-footprint"], run: async () => [await runDeviceFootprint(opts.buffer, opts.fileName)] },
+    { scanners: ["archive"], run: async () => [await runArchiveEngine(opts.buffer, opts.fileName)] },
+    { scanners: ["blocklist"], run: async () => [await runBlocklistEngine(sha256Buffer(opts.buffer))] },
+    { scanners: ["static-audit"], run: async () => [await runStaticAuditor(opts.buffer, opts.fileName)] },
   ];
 
   const byScanner = new Map<ScannerId, EngineResult>();

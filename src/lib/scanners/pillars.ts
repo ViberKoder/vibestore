@@ -1,15 +1,17 @@
 import type { AuditPillars, EngineResult, ThreatFinding } from "../types";
 
 const PILLAR_ENGINES: Record<keyof AuditPillars, string[]> = {
-  safety: ["clamav", "clamwin", "virustotal", "vibeguard"],
+  safety: ["clamav", "clamwin", "virustotal", "vibeguard", "blocklist", "url-reputation"],
   privacy: ["privacy", "network-sink"],
   hardening: [
     "secrets",
     "electron-hardening",
     "web-static",
     "pe-inspector",
+    "http-security",
+    "static-audit",
   ],
-  integrity: ["integrity", "entropy"],
+  integrity: ["integrity", "entropy", "archive"],
   device: ["device-footprint"],
 };
 
@@ -33,6 +35,11 @@ function weightedEngineScore(engines: EngineResult[], ids: string[]): number {
     integrity: 1.2,
     entropy: 0.6,
     "device-footprint": 1.3,
+    archive: 1.2,
+    blocklist: 2,
+    "url-reputation": 1.5,
+    "http-security": 1.1,
+    "static-audit": 1.4,
   };
   let sum = 0;
   let w = 0;

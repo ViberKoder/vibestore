@@ -20,6 +20,13 @@ export default async function PublishPage() {
           </p>
         </div>
 
+        <p className="fade-up-d1 mt-6 text-[14px] text-ink-2">
+          {t("Have a repository?")}{" "}
+          <a href="/import" className="font-semibold text-blue hover:underline">
+            {t("Import from GitHub")}
+          </a>
+        </p>
+
         <div className="fade-up-d1 mt-8 surface-card p-6 md:p-8">
           <PublishForm />
         </div>

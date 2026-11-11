@@ -2,6 +2,7 @@ import { promises as fs, createReadStream } from "fs";
 import { Readable } from "stream";
 import { NextResponse } from "next/server";
 import { bumpDownloads, getAppById, getAppBySlug } from "@/lib/store";
+import { contentDisposition } from "@/lib/security/http";
 
 export async function GET(
   _req: Request,
@@ -41,7 +42,8 @@ export async function GET(
           headers: {
             "Content-Type": app.mimeType || "application/octet-stream",
             "Content-Length": String(stat.size),
-            "Content-Disposition": `attachment; filename="${app.fileName}"`,
+            "Content-Disposition": contentDisposition(app.fileName),
+          "X-Content-Type-Options": "nosniff",
             "X-VibeStore-SHA256": app.sha256,
             "X-VibeStore-Score": String(app.scan?.securityScore ?? ""),
           },

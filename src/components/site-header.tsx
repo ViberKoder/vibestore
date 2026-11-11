@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LanguageSwitcher, useT } from "@/lib/i18n/client";
 import { ThemeToggle } from "./theme-toggle";
+import { GithubAuthButton } from "./github-auth-button";
 
 const links = [
   { href: "/", label: "Overview" },
@@ -51,6 +52,7 @@ export function SiteHeader() {
           </nav>
         </div>
         <div className="flex items-center gap-2">
+          <GithubAuthButton />
           <LanguageSwitcher />
           <ThemeToggle />
           <Link

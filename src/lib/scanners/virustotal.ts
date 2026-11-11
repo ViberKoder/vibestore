@@ -396,3 +396,100 @@ export async function runVirusTotal(
     };
   }
 }
+
+/** VirusTotal URL reputation: existing report, otherwise submit and report as pending. */
+export async function checkVirusTotalUrl(url: string): Promise<EngineResult> {
+  const started = Date.now();
+  if (!vtKey()) {
+    return {
+      scanner: "url-reputation",
+      displayName: "VirusTotal (URL)",
+      verdict: "skipped",
+      score: 100,
+      durationMs: Date.now() - started,
+      summary: "VirusTotal URL lookup skipped: VIRUSTOTAL_API_KEY is not set.",
+      findings: [],
+      meta: { mode: "unavailable" },
+    };
+  }
+  const urlId = Buffer.from(url).toString("base64url");
+  try {
+    const res = await vtFetch(`/urls/${urlId}`);
+    if (res.status === 404) {
+      const body = new URLSearchParams({ url });
+      const sub = await vtFetch("/urls", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body,
+      });
+      if (!sub.ok) throw new Error(`VirusTotal URL submit failed ${sub.status}`);
+      return {
+        scanner: "url-reputation",
+        displayName: "VirusTotal (URL)",
+        verdict: "error",
+        score: 60,
+        durationMs: Date.now() - started,
+        summary: "VirusTotal: this URL was not analysed before. It has been submitted — check again in a few minutes.",
+        findings: [
+          {
+            id: "url-vt-pending",
+            scanner: "url-reputation",
+            severity: "low",
+            category: "policy",
+            title: "VirusTotal is analysing this URL",
+            detail: "The URL is new to VirusTotal. Vendors need a few minutes.",
+            meaning: "Absence of a report is not a verdict.",
+            action: "Run the check again later.",
+          },
+        ],
+        meta: { mode: "pending-analysis" },
+      };
+    }
+    if (res.status === 429) throw new Error("VirusTotal rate limit — try again in a minute");
+    if (!res.ok) throw new Error(`VirusTotal URL report error ${res.status}`);
+    const json = (await res.json()) as {
+      data?: { attributes?: { last_analysis_stats?: VtStats } };
+    };
+    const stats = json.data?.attributes?.last_analysis_stats;
+    if (!stats) throw new Error("VirusTotal returned no stats");
+    const perm = `https://www.virustotal.com/gui/url/${urlId}`;
+    const bad = stats.malicious ?? 0;
+    const susp = stats.suspicious ?? 0;
+    const verdict: EngineResult["verdict"] = bad >= 3 ? "malicious" : bad > 0 || susp > 2 ? "suspicious" : "clean";
+    const findings: ThreatFinding[] = [];
+    if (bad > 0 || susp > 2) {
+      findings.push({
+        id: "url-vt-flagged",
+        scanner: "url-reputation",
+        severity: bad >= 3 ? "critical" : "high",
+        category: "virus",
+        title: `${bad} VirusTotal engine(s) flag this URL`,
+        detail: `${bad} malicious / ${susp} suspicious. Report: ${perm}`,
+        meaning: "Independent vendors consider this site dangerous.",
+        action: "Do not link or distribute this URL. Check the vendor report.",
+      });
+    }
+    return {
+      scanner: "url-reputation",
+      displayName: "VirusTotal (URL)",
+      verdict,
+      score: Math.max(0, 100 - bad * 10 - susp * 3),
+      durationMs: Date.now() - started,
+      summary: `VirusTotal URL: ${bad} malicious / ${susp} suspicious / ${stats.harmless ?? 0} harmless.`,
+      findings,
+      meta: { mode: "url-report", permalink: perm },
+    };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return {
+      scanner: "url-reputation",
+      displayName: "VirusTotal (URL)",
+      verdict: "error",
+      score: 0,
+      durationMs: Date.now() - started,
+      summary: `VirusTotal URL error: ${message}`,
+      findings: [],
+      meta: { mode: "error" },
+    };
+  }
+}

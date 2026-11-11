@@ -15,6 +15,8 @@ import {
 } from "@/lib/owner-auth";
 import { listApps, mediaDirFor, uploadPathFor, upsertApp } from "@/lib/store";
 import { uniqueSlug } from "@/lib/slug";
+import { getSessionUser } from "@/lib/auth/session";
+import { limitRequest } from "@/lib/security/rate-limit";
 import {
   MAX_FEATURES,
   MAX_SCREENSHOT_BYTES,
@@ -157,6 +159,8 @@ async function saveScreenshots(
 }
 
 export async function POST(req: Request) {
+  const limited = limitRequest(req, "publish");
+  if (limited) return limited;
   const form = await req.formData();
   const file = form.get("file");
 
@@ -255,6 +259,7 @@ export async function POST(req: Request) {
     }
   }
 
+  const gh = getSessionUser(req.headers.get("cookie"));
   let ownerId = readDeveloperId(req.headers.get("cookie"));
   if (!ownerId) ownerId = mintDeveloperId();
 
@@ -286,6 +291,7 @@ export async function POST(req: Request) {
     iconHue: Math.floor(Math.random() * 360),
     iconUrl,
     ownerId,
+    ownerGithub: gh ? { id: gh.id, login: gh.login } : undefined,
     scanProgress: initialScanProgress(),
   };
 
