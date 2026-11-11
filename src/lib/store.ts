@@ -257,11 +257,25 @@ export async function patchApp(
   const db = await readOnlyDb();
   const idx = db.apps.findIndex((a) => a.id === id);
   if (idx < 0) return null;
-  db.apps[idx] = {
-    ...db.apps[idx],
+  const prev = db.apps[idx];
+  const next: StoreApp = {
+    ...prev,
     ...patch,
     updatedAt: new Date().toISOString(),
   };
+  // Every completed scan is recorded, so verdict changes stay visible over time.
+  if (patch.scan && patch.scan !== prev.scan) {
+    const history = [...(prev.scanHistory ?? [])];
+    history.push({
+      at: patch.scan.finishedAt,
+      scanId: patch.scan.id,
+      readiness: patch.scan.readiness,
+      score: patch.scan.trustScore ?? patch.scan.securityScore,
+      sha256: next.sha256,
+    });
+    next.scanHistory = history.slice(-20);
+  }
+  db.apps[idx] = next;
   const updated = { ...db.apps[idx] };
   await schedulePersist();
   return updated;

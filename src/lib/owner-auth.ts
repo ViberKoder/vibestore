@@ -75,6 +75,8 @@ export type PublicStoreApp = Omit<
   hasOwner: boolean;
   /** Public GitHub login of the uploader, when known */
   ownerGithubLogin?: string;
+  source?: StoreApp["source"];
+  scanHistory?: StoreApp["scanHistory"];
   isOwner?: boolean;
   /** Non-owners can restore by typing the developer name */
   canRestore?: boolean;
@@ -115,6 +117,8 @@ export function toPublicApp(
     scanProgress: app.scanProgress,
     hasOwner: Boolean(app.ownerId || app.ownerGithub),
     ownerGithubLogin: app.ownerGithub?.login,
+    source: app.source,
+    scanHistory: app.scanHistory,
     isOwner,
     canRestore: Boolean(app.ownerId || app.ownerGithub) && !isOwner,
   };

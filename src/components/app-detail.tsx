@@ -225,6 +225,28 @@ function OverviewTab({
         <MetaRow label={t("Category")} value={app.category || "—"} />
         <MetaRow label={t("Type")} value={app.kind} />
         <MetaRow label={t("File")} value={app.fileName} />
+        {app.source && (
+          <MetaRow
+            label={t("Source")}
+            value={`${app.source.repo}@${app.source.commit.slice(0, 10)}`}
+            mono
+          />
+        )}
+        {app.scanHistory && app.scanHistory.length > 0 && (
+          <div className="space-y-1.5 border-t border-[var(--line)] pt-3">
+            <p className="text-[12px] font-semibold text-ink">{t("Verification history")}</p>
+            <ul className="space-y-1">
+              {[...app.scanHistory].reverse().slice(0, 5).map((h) => (
+                <li key={h.scanId} className="flex items-baseline justify-between gap-2 text-[11px] text-ink-3">
+                  <span className="tabular-nums">{h.at.slice(0, 16).replace("T", " ")}</span>
+                  <span className="font-semibold text-ink">
+                    {t(readinessWord(h.readiness))} · {h.score}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
         {developer && (
           <div className="space-y-1 border-t border-[var(--line)] pt-3">
             <MetaRow label={t("Developer")} value={developer.name} />
@@ -371,4 +393,8 @@ function MetaRow({
       </span>
     </div>
   );
+}
+
+function readinessWord(r: "ready" | "needs_fixes" | "blocked"): string {
+  return r === "ready" ? "Ready" : r === "needs_fixes" ? "Needs fixes" : "Blocked";
 }

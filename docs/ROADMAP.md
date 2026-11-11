@@ -78,7 +78,23 @@ means "no blocking findings in the checks listed", and the report says so.
 | 3. Breakable | Electron flags, end-of-life runtime, secrets, HTTP/TLS/headers | dependency CVEs → OSV lookup (next step) |
 | 4. Device slowdown | size, native modules, miner/autostart heuristics | measured CPU/RAM → sandbox (Stage B) |
 
-### Next steps, in order
+### Status of the next steps
+
+1. **Dependency advisories (OSV) — done.** npm packages are read from
+   `package-lock.json` and from `node_modules` shipped in `app.asar` or a ZIP,
+   then matched against OSV. A failed lookup is reported as *unavailable*, never
+   as "no vulnerabilities". Advisories are capped at *high* and never produce
+   the "malicious" verdict: a vulnerable library is not malware.
+   Not yet covered: pip/cargo/gradle ecosystems and transitive dependencies of
+   bundled native code.
+2. **Source pinning for imports — done.** Imports resolve the branch/tag to a
+   commit SHA and store `repo@sha` with the app; the archive is fetched by SHA.
+3. **Stage B sandbox — blocked.** Needs a host with virtualisation (Windows VM or
+   microVM). Not available in the current environment.
+4. **Verification history — done.** Every completed scan is recorded with its
+   time, verdict, score and build hash (last 20), and shown on the app page.
+
+### Remaining next steps (original list)
 
 1. **Dependency CVEs (OSV).** Parse `package-lock.json` / `package.json` found
    inside the package and ZIP sources, query the OSV API (`api.osv.dev`), and

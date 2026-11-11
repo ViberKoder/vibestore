@@ -1,7 +1,7 @@
 import { promises as fs } from "fs";
 import { randomBytes } from "crypto";
 import { NextResponse } from "next/server";
-import { GITHUB_API_BASE, apiHeaders, getRepo } from "@/lib/auth/github";
+import { GITHUB_API_BASE, apiHeaders, apiJson, getRepo } from "@/lib/auth/github";
 import { getSessionToken, getSessionUser } from "@/lib/auth/session";
 import { developerCookieHeader, mintDeveloperId, readDeveloperId, requestHost, toPublicApp } from "@/lib/owner-auth";
 import { initialScanProgress } from "@/lib/scanners/pipeline";
@@ -114,9 +114,19 @@ export async function POST(req: Request) {
   }
   const useRef = ref || repo.default_branch;
 
+  // Pin the exact commit: the verdict then refers to one immutable source revision.
+  const commit = await apiJson<{ sha: string }>(
+    `/repos/${repo.owner.login}/${repo.name}/commits/${encodeURIComponent(useRef)}`,
+    token,
+  );
+  if (!commit.data?.sha) {
+    return NextResponse.json({ error: "Branch, tag or commit not found in this repository" }, { status: 404 });
+  }
+  const commitSha = commit.data.sha;
+
   let archive: Buffer;
   try {
-    const res = await fetchArchive(`${GITHUB_API_BASE}/repos/${repo.owner.login}/${repo.name}/zipball/${useRef}`, token);
+    const res = await fetchArchive(`${GITHUB_API_BASE}/repos/${repo.owner.login}/${repo.name}/zipball/${commitSha}`, token);
     if (!res.ok) {
       return NextResponse.json({ error: `GitHub returned ${res.status} for this branch or commit` }, { status: 502 });
     }
@@ -165,6 +175,7 @@ export async function POST(req: Request) {
     iconHue: Math.floor(Math.random() * 360),
     ownerId: devId,
     ownerGithub: { id: user.id, login: user.login },
+    source: { provider: "github", repo: repo.full_name, ref: useRef, commit: commitSha },
     scanProgress: initialScanProgress(),
   };
   await upsertApp(app);

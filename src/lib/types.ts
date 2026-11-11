@@ -26,7 +26,8 @@ export type ScannerId =
   | "blocklist"
   | "http-security"
   | "url-reputation"
-  | "static-audit";
+  | "static-audit"
+  | "dependencies";
 
 export type ScannerVerdict =
   | "clean"
@@ -188,6 +189,10 @@ export interface StoreApp {
   ownerId?: string;
   /** GitHub account that uploaded or imported the app (set when signed in). */
   ownerGithub?: { id: number; login: string };
+  /** Where the build came from. For imports the commit SHA pins the exact source. */
+  source?: { provider: "github"; repo: string; ref: string; commit: string };
+  /** Verification history: one entry per completed scan (newest last, capped). */
+  scanHistory?: Array<{ at: string; scanId: string; readiness: ReleaseReadiness; score: number; sha256: string }>;
   /** @deprecated removed — kept optional for old store.json cleanup */
   ownerKeyHash?: string;
   scan?: ScanReport;
@@ -240,6 +245,7 @@ export const SCAN_ENGINE_ORDER: Array<{
   { scanner: "archive", displayName: "Archive & type inspector" },
   { scanner: "blocklist", displayName: "Blocklist" },
   { scanner: "static-audit", displayName: "Static auditor (Stage A)" },
+  { scanner: "dependencies", displayName: "Dependency advisories (OSV)" },
 ];
 
 export const PILLAR_META: Array<{

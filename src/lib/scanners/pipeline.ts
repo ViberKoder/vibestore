@@ -29,6 +29,7 @@ import { computeAuditPillars, trustFromPillars } from "./pillars";
 import { runVirusTotal } from "./virustotal";
 import { runArchiveEngine, runBlocklistEngine } from "./security-engines";
 import { runStaticAuditor } from "./static-audit";
+import { runDependencyEngine } from "./dependencies";
 import { sha256Buffer } from "../hash";
 
 function readinessFrom(
@@ -160,6 +161,7 @@ export async function runScanPipeline(opts: {
     { scanners: ["archive"], run: async () => [await runArchiveEngine(opts.buffer, opts.fileName)] },
     { scanners: ["blocklist"], run: async () => [await runBlocklistEngine(sha256Buffer(opts.buffer))] },
     { scanners: ["static-audit"], run: async () => [await runStaticAuditor(opts.buffer, opts.fileName)] },
+    { scanners: ["dependencies"], run: async () => [await runDependencyEngine(opts.buffer, opts.fileName)] },
   ];
 
   const byScanner = new Map<ScannerId, EngineResult>();
@@ -324,12 +326,17 @@ export function statusFromReport(
 export function buildCoverage(engines: EngineResult[], kind: string): ScanCoverage {
   const count = (v: EngineResult["verdict"]) => engines.filter((e) => e.verdict === v).length;
   const unavailable = engines.filter((e) => e.verdict === "error").length;
+  const dependenciesChecked = engines.some(
+    (e) => e.scanner === "dependencies" && (e.verdict === "clean" || e.verdict === "suspicious" || e.verdict === "malicious"),
+  );
   const notVerified = [
     "Runtime behaviour: nothing is executed, so keyloggers, injection and persistence are not observed",
-    "Dependency vulnerabilities (CVE/OSV): library versions are not matched against advisories yet",
     "Device impact under load: CPU/RAM are not measured",
     "Obfuscated or minified code: intent is not decided, only patterns are matched",
   ];
+  if (!dependenciesChecked) {
+    notVerified.unshift("Dependency vulnerabilities (CVE/OSV): no advisory lookup was completed for this build");
+  }
   if (kind === "desktop") notVerified.push("Installer contents (NSIS/MSI) are not unpacked, only the outer file is checked");
   return {
     total: engines.length,
