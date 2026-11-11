@@ -6,6 +6,8 @@ import {
   statusFromReport,
 } from "@/lib/scanners/pipeline";
 import { getAppById, getAppBySlug, patchApp, updateScanProgress } from "@/lib/store";
+import { isAppOwner } from "@/lib/owner-auth";
+import { limitRequest } from "@/lib/security/rate-limit";
 
 export const runtime = "nodejs";
 export const maxDuration = 600;
@@ -13,13 +15,19 @@ export const maxDuration = 600;
 const running = new Set<string>();
 
 export async function POST(
-  _req: Request,
+  req: Request,
   ctx: { params: Promise<{ id: string }> },
 ) {
+  const limited = limitRequest(req, "scan");
+  if (limited) return limited;
   const { id } = await ctx.params;
   const app = (await getAppById(id)) ?? (await getAppBySlug(id));
   if (!app) {
     return NextResponse.json({ error: "App not found" }, { status: 404 });
+  }
+  // A first scan runs for anyone who opens the page; re-running an existing report is owner-only.
+  if (app.scan && !isAppOwner(app, req.headers.get("cookie"))) {
+    return NextResponse.json({ error: "Only the uploader can re-run the scan." }, { status: 403 });
   }
 
   if (running.has(app.id)) {

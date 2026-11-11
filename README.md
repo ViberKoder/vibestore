@@ -1,4 +1,4 @@
-# Vibe Store
+# Vibe Apps
 
 Безопасный App Store для вайбкодерских приложений: сайты, утилиты, `.exe` и другие сборки проходят мультидвижковый скан до публикации.
 
@@ -13,6 +13,26 @@
   - **VibeGuard**, Entropy, PE Inspector, Network Sink, Web Static
 - Security score + readiness: Ready / Needs fixes / Blocked
 - Кабинет разработчика
+
+## Вход через GitHub и импорт репозиториев
+
+1. Создайте OAuth App: https://github.com/settings/developers → **New OAuth App**.
+   - **Authorization callback URL:** `https://<ваш-домен>/api/auth/github/callback`
+2. Задайте переменные окружения:
+   - `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` — из OAuth App (без них вход выключен);
+   - `APP_URL=https://<ваш-домен>` — публичный адрес (для callback).
+3. Вход запрашивает scope `read:user repo`: `repo` нужен, чтобы импортировать приватные репозитории.
+   Токен хранится только в памяти сервера; после перезапуска нужно войти снова.
+
+Импорт архива ограничен 200 МБ. Владелец импортированного приложения — ваш GitHub-аккаунт.
+
+## Проверка сайтов
+
+`/check` — проверка публичного адреса: TLS, заголовки безопасности, cookie, формы с паролем,
+смешанный контент, эвристики по HTML и скриптам и VirusTotal по URL (нужен `VIRUSTOTAL_API_KEY`).
+Адреса в приватных сетях, IP-литералы и порты кроме 80/443 отклоняются.
+
+Дорожная карта и статус каждого этапа: `docs/ROADMAP.md`.
 
 ## Язык интерфейса
 

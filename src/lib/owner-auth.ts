@@ -1,5 +1,6 @@
 import { randomBytes } from "crypto";
 import type { StoreApp } from "./types";
+import { getSessionUser } from "./auth/session";
 
 export const DEV_COOKIE = "vibe_dev";
 const DEV_TTL_SEC = 60 * 60 * 24 * 365; // 1 year
@@ -45,11 +46,13 @@ export function requestHost(req: Request): string | null {
 }
 
 export function isAppOwner(
-  app: Pick<StoreApp, "ownerId">,
+  app: Pick<StoreApp, "ownerId" | "ownerGithub">,
   cookieHeader: string | null,
 ): boolean {
   const devId = readDeveloperId(cookieHeader);
-  return Boolean(devId && app.ownerId && devId === app.ownerId);
+  if (devId && app.ownerId && devId === app.ownerId) return true;
+  const gh = getSessionUser(cookieHeader);
+  return Boolean(gh && app.ownerGithub && gh.id === app.ownerGithub.id);
 }
 
 export function normalizeDevName(name: string): string {
@@ -67,9 +70,13 @@ export function developerNameMatches(
 
 export type PublicStoreApp = Omit<
   StoreApp,
-  "ownerKeyHash" | "filePath" | "ownerId"
+  "ownerKeyHash" | "filePath" | "ownerId" | "ownerGithub"
 > & {
   hasOwner: boolean;
+  /** Public GitHub login of the uploader, when known */
+  ownerGithubLogin?: string;
+  source?: StoreApp["source"];
+  scanHistory?: StoreApp["scanHistory"];
   isOwner?: boolean;
   /** Non-owners can restore by typing the developer name */
   canRestore?: boolean;
@@ -108,8 +115,11 @@ export function toPublicApp(
     iconUrl: app.iconUrl,
     scan: app.scan,
     scanProgress: app.scanProgress,
-    hasOwner: Boolean(app.ownerId),
+    hasOwner: Boolean(app.ownerId || app.ownerGithub),
+    ownerGithubLogin: app.ownerGithub?.login,
+    source: app.source,
+    scanHistory: app.scanHistory,
     isOwner,
-    canRestore: Boolean(app.ownerId) && !isOwner,
+    canRestore: Boolean(app.ownerId || app.ownerGithub) && !isOwner,
   };
 }

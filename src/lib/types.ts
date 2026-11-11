@@ -21,7 +21,13 @@ export type ScannerId =
   | "electron-hardening"
   | "privacy"
   | "device-footprint"
-  | "integrity";
+  | "integrity"
+  | "archive"
+  | "blocklist"
+  | "http-security"
+  | "url-reputation"
+  | "static-audit"
+  | "dependencies";
 
 export type ScannerVerdict =
   | "clean"
@@ -132,6 +138,22 @@ export interface ScanReport {
   criticalCount: number;
   highCount: number;
   consensus: string;
+  /** What this report did and did not verify. Shown next to every verdict. */
+  coverage?: ScanCoverage;
+}
+
+export interface ScanCoverage {
+  total: number;
+  /** Checks that ran and found nothing blocking */
+  passed: number;
+  /** Checks that produced findings (any severity) */
+  flagged: number;
+  /** Checks skipped because they do not apply to this artifact */
+  skipped: number;
+  /** Checks that could not run (missing key, service error, unreadable input) */
+  unavailable: number;
+  /** Things this tool does not verify at all, whatever the verdict */
+  notVerified: string[];
 }
 
 export interface StoreApp {
@@ -165,6 +187,12 @@ export interface StoreApp {
   iconUrl?: string;
   /** Browser developer id of the uploader — never expose to clients */
   ownerId?: string;
+  /** GitHub account that uploaded or imported the app (set when signed in). */
+  ownerGithub?: { id: number; login: string };
+  /** Where the build came from. For imports the commit SHA pins the exact source. */
+  source?: { provider: "github"; repo: string; ref: string; commit: string };
+  /** Verification history: one entry per completed scan (newest last, capped). */
+  scanHistory?: Array<{ at: string; scanId: string; readiness: ReleaseReadiness; score: number; sha256: string }>;
   /** @deprecated removed — kept optional for old store.json cleanup */
   ownerKeyHash?: string;
   scan?: ScanReport;
@@ -213,6 +241,11 @@ export const SCAN_ENGINE_ORDER: Array<{
   { scanner: "privacy", displayName: "Privacy Auditor" },
   { scanner: "integrity", displayName: "Integrity Auditor" },
   { scanner: "device-footprint", displayName: "Device Footprint" },
+  // Stage B: structural and known-bad checks
+  { scanner: "archive", displayName: "Archive & type inspector" },
+  { scanner: "blocklist", displayName: "Blocklist" },
+  { scanner: "static-audit", displayName: "Static auditor (Stage A)" },
+  { scanner: "dependencies", displayName: "Dependency advisories (OSV)" },
 ];
 
 export const PILLAR_META: Array<{

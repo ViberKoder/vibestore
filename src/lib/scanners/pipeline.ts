@@ -1,5 +1,6 @@
 import type {
   EngineResult,
+  ScanCoverage,
   ReleaseReadiness,
   ScanEngineProgress,
   ScanProgress,
@@ -26,6 +27,10 @@ import {
 import { enrichFindingsWithPrompts } from "./agent-prompt";
 import { computeAuditPillars, trustFromPillars } from "./pillars";
 import { runVirusTotal } from "./virustotal";
+import { runArchiveEngine, runBlocklistEngine } from "./security-engines";
+import { runStaticAuditor } from "./static-audit";
+import { runDependencyEngine } from "./dependencies";
+import { sha256Buffer } from "../hash";
 
 function readinessFrom(
   score: number,
@@ -153,6 +158,10 @@ export async function runScanPipeline(opts: {
     { scanners: ["privacy"], run: async () => [await runPrivacyAuditor(opts.buffer)] },
     { scanners: ["integrity"], run: async () => [await runIntegrityAuditor(opts.buffer, opts.fileName)] },
     { scanners: ["device-footprint"], run: async () => [await runDeviceFootprint(opts.buffer, opts.fileName)] },
+    { scanners: ["archive"], run: async () => [await runArchiveEngine(opts.buffer, opts.fileName)] },
+    { scanners: ["blocklist"], run: async () => [await runBlocklistEngine(sha256Buffer(opts.buffer))] },
+    { scanners: ["static-audit"], run: async () => [await runStaticAuditor(opts.buffer, opts.fileName)] },
+    { scanners: ["dependencies"], run: async () => [await runDependencyEngine(opts.buffer, opts.fileName)] },
   ];
 
   const byScanner = new Map<ScannerId, EngineResult>();
@@ -287,6 +296,8 @@ export async function finalizeReport(
   const finishedAt = new Date().toISOString();
   await onDone?.(ready.readinessLabel);
 
+  const coverage = buildCoverage(resultsWithPrompts, ctx.kind);
+
   return {
     id: `scan_${Date.now().toString(36)}`,
     startedAt,
@@ -296,6 +307,7 @@ export async function finalizeReport(
     trustScore,
     pillars,
     ...ready,
+    coverage,
     threatCount: findings.length,
     criticalCount: findings.filter((f) => f.severity === "critical").length,
     highCount: findings.filter((f) => f.severity === "high").length,
@@ -308,4 +320,30 @@ export function statusFromReport(
   if (report.readiness === "blocked") return "rejected";
   if (report.readiness === "needs_fixes") return "quarantined";
   return "published";
+}
+
+/** Honest scope of a report: what ran, what was skipped or unavailable, and what is never verified. */
+export function buildCoverage(engines: EngineResult[], kind: string): ScanCoverage {
+  const count = (v: EngineResult["verdict"]) => engines.filter((e) => e.verdict === v).length;
+  const unavailable = engines.filter((e) => e.verdict === "error").length;
+  const dependenciesChecked = engines.some(
+    (e) => e.scanner === "dependencies" && (e.verdict === "clean" || e.verdict === "suspicious" || e.verdict === "malicious"),
+  );
+  const notVerified = [
+    "Runtime behaviour: nothing is executed, so keyloggers, injection and persistence are not observed",
+    "Device impact under load: CPU/RAM are not measured",
+    "Obfuscated or minified code: intent is not decided, only patterns are matched",
+  ];
+  if (!dependenciesChecked) {
+    notVerified.unshift("Dependency vulnerabilities (CVE/OSV): no advisory lookup was completed for this build");
+  }
+  if (kind === "desktop") notVerified.push("Installer contents (NSIS/MSI) are not unpacked, only the outer file is checked");
+  return {
+    total: engines.length,
+    passed: count("clean"),
+    flagged: count("suspicious") + count("malicious"),
+    skipped: count("skipped"),
+    unavailable,
+    notVerified,
+  };
 }

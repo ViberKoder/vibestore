@@ -2,6 +2,7 @@ import { promises as fs, createReadStream } from "fs";
 import { Readable } from "stream";
 import { NextResponse } from "next/server";
 import { bumpDownloads, getAppById, getAppBySlug } from "@/lib/store";
+import { contentDisposition } from "@/lib/security/http";
 
 export async function GET(
   _req: Request,
@@ -41,9 +42,10 @@ export async function GET(
           headers: {
             "Content-Type": app.mimeType || "application/octet-stream",
             "Content-Length": String(stat.size),
-            "Content-Disposition": `attachment; filename="${app.fileName}"`,
-            "X-VibeStore-SHA256": app.sha256,
-            "X-VibeStore-Score": String(app.scan?.securityScore ?? ""),
+            "Content-Disposition": contentDisposition(app.fileName),
+          "X-Content-Type-Options": "nosniff",
+            "X-VibeApps-SHA256": app.sha256,
+            "X-VibeApps-Score": String(app.scan?.securityScore ?? ""),
           },
         });
       }
@@ -54,7 +56,7 @@ export async function GET(
 
   const demo = Buffer.from(
     [
-      "Vibe Store demo download",
+      "Vibe Apps demo download",
       `App: ${app.name}`,
       `Version: ${app.version}`,
       `SHA256: ${app.sha256}`,
@@ -71,7 +73,7 @@ export async function GET(
     headers: {
       "Content-Type": "text/plain; charset=utf-8",
       "Content-Disposition": `attachment; filename="${app.slug}-vibestore.txt"`,
-      "X-VibeStore-SHA256": app.sha256,
+      "X-VibeApps-SHA256": app.sha256,
     },
   });
 }

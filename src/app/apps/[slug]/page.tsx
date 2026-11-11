@@ -24,6 +24,19 @@ export default async function AppPage({
   const publicApp = toPublicApp(app, { isOwner: owner });
 
   const forceScanning = sp.scanning === "1";
+  // Developer reputation from the catalogue itself: same GitHub account, else same developer name.
+  const everything = await listApps({ status: "all" });
+  const sameDev = (a: typeof app) =>
+    app.ownerGithub
+      ? a.ownerGithub?.id === app.ownerGithub.id
+      : !a.ownerGithub && a.developerName.trim().toLowerCase() === app.developerName.trim().toLowerCase();
+  const devApps = everything.filter(sameDev);
+  const developer = {
+    name: app.ownerGithub?.login ?? app.developerName,
+    total: devApps.length,
+    verified: devApps.filter((a) => a.status === "published").length,
+    blocked: devApps.filter((a) => a.status === "rejected").length,
+  };
   const related = (await listApps({ status: "published" }))
     .filter((a) => a.id !== app.id)
     .slice(0, 4)
@@ -43,6 +56,7 @@ export default async function AppPage({
           <AppDetail
             app={publicApp}
             related={related}
+            developer={developer}
             forceScanning={forceScanning}
             showManage={
               Boolean(publicApp.isOwner) ||

@@ -17,11 +17,13 @@ type Tab = "overview" | "gallery" | "audit";
 export function AppDetail({
   app,
   related,
+  developer,
   forceScanning,
   showManage = false,
 }: {
   app: PublicStoreApp;
   related: PublicStoreApp[];
+  developer?: { name: string; total: number; verified: number; blocked: number };
   forceScanning?: boolean;
   /** Only the uploader (or claimable legacy app) sees manage */
   showManage?: boolean;
@@ -143,7 +145,7 @@ export function AppDetail({
 
       <div className="fade-up-d2 mt-6">
         {tab === "overview" && (
-          <OverviewTab app={app} features={features} related={related} />
+          <OverviewTab app={app} features={features} related={related} developer={developer} />
         )}
         {tab === "gallery" && (
           <GalleryTab shots={shots} features={features} />
@@ -162,10 +164,12 @@ function OverviewTab({
   app,
   features,
   related,
+  developer,
 }: {
   app: PublicStoreApp;
   features: StoreApp["features"];
   related: PublicStoreApp[];
+  developer?: { name: string; total: number; verified: number; blocked: number };
 }) {
   const t = useT();
   return (
@@ -221,6 +225,43 @@ function OverviewTab({
         <MetaRow label={t("Category")} value={app.category || "—"} />
         <MetaRow label={t("Type")} value={app.kind} />
         <MetaRow label={t("File")} value={app.fileName} />
+        {app.source && (
+          <MetaRow
+            label={t("Source")}
+            value={`${app.source.repo}@${app.source.commit.slice(0, 10)}`}
+            mono
+          />
+        )}
+        {app.scanHistory && app.scanHistory.length > 0 && (
+          <div className="space-y-1.5 border-t border-[var(--line)] pt-3">
+            <p className="text-[12px] font-semibold text-ink">{t("Verification history")}</p>
+            <ul className="space-y-1">
+              {[...app.scanHistory].reverse().slice(0, 5).map((h) => (
+                <li key={h.scanId} className="flex items-baseline justify-between gap-2 text-[11px] text-ink-3">
+                  <span className="tabular-nums">{h.at.slice(0, 16).replace("T", " ")}</span>
+                  <span className="font-semibold text-ink">
+                    {t(readinessWord(h.readiness))} · {h.score}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        {developer && (
+          <div className="space-y-1 border-t border-[var(--line)] pt-3">
+            <MetaRow label={t("Developer")} value={developer.name} />
+            <p className="text-[12px] leading-relaxed text-ink-3">
+              {fill(t("{total} app(s) · {verified} verified · {blocked} blocked"), {
+                total: developer.total,
+                verified: developer.verified,
+                blocked: developer.blocked,
+              })}
+            </p>
+            {developer.blocked > 0 && (
+              <p className="text-[12px] text-red-ink">{t("This developer has builds that were blocked.")}</p>
+            )}
+          </div>
+        )}
         <MetaRow label="SHA256" value={`${app.sha256.slice(0, 12)}…`} mono />
         {app.tags.length > 0 && (
           <div className="flex flex-wrap gap-1.5 pt-1">
@@ -352,4 +393,8 @@ function MetaRow({
       </span>
     </div>
   );
+}
+
+function readinessWord(r: "ready" | "needs_fixes" | "blocked"): string {
+  return r === "ready" ? "Ready" : r === "needs_fixes" ? "Needs fixes" : "Blocked";
 }

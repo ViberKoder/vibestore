@@ -16,7 +16,7 @@ const manrope = Manrope({
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getT();
   return {
-    title: t("Vibe Store — a safe app catalog"),
+    title: t("Vibe Apps — a safe app catalog"),
     description: t(
       "An app store for vibe-coded apps. VirusTotal, ClamAV, ClamWin and VibeGuard check every build before download.",
     ),

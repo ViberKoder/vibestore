@@ -12,6 +12,7 @@ import type {
 import { PILLAR_META } from "@/lib/types";
 import { buildAgentPrompt } from "@/lib/scanners/agent-prompt";
 import { useT } from "@/lib/i18n/client";
+import { fill } from "@/lib/i18n/core";
 import { ScoreRing } from "./safety-badge";
 
 const verdictCopy: Record<
@@ -120,6 +121,8 @@ export function ScanReportView({
       </div>
 
       {pillars && <PillarStrip pillars={pillars} />}
+
+      {report.coverage && <CoverageNote coverage={report.coverage} />}
 
       {vtPending && (
         <div className="rounded-xl border border-amber/30 bg-amber-soft px-3.5 py-3">
@@ -404,5 +407,33 @@ function RescanButton({
       </button>
       {err && <span className="mt-0.5 text-[10px] text-red-ink">{t(err)}</span>}
     </span>
+  );
+}
+
+function CoverageNote({ coverage }: { coverage: NonNullable<ScanReport["coverage"]> }) {
+  const t = useT();
+  return (
+    <div className="rounded-xl bg-bg px-3.5 py-3 text-[12px] leading-relaxed text-ink-2">
+      <p className="font-semibold text-ink">
+        {fill(t("{total} checks: {passed} passed, {flagged} flagged, {skipped} not applicable, {unavailable} unavailable."), {
+          total: coverage.total,
+          passed: coverage.passed,
+          flagged: coverage.flagged,
+          skipped: coverage.skipped,
+          unavailable: coverage.unavailable,
+        })}
+      </p>
+      <p className="mt-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-3">
+        {t("Not verified by this report")}
+      </p>
+      <ul className="mt-1 list-disc space-y-0.5 pl-4">
+        {coverage.notVerified.map((item) => (
+          <li key={item}>{t(item)}</li>
+        ))}
+      </ul>
+      <p className="mt-2 text-ink-3">
+        {t("A passing report is evidence, not a guarantee that the software is safe.")}
+      </p>
+    </div>
   );
 }
