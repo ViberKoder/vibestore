@@ -172,6 +172,7 @@ function OverviewTab({
   developer?: { name: string; total: number; verified: number; blocked: number };
 }) {
   const t = useT();
+  const apkMeta = app.scan?.engines.find((e) => e.scanner === "apk")?.meta as Record<string, string | number> | undefined;
   return (
     <div className="grid gap-8 lg:grid-cols-[1fr_280px]">
       <div className="space-y-8">
@@ -225,6 +226,14 @@ function OverviewTab({
         <MetaRow label={t("Category")} value={app.category || "—"} />
         <MetaRow label={t("Type")} value={app.kind} />
         <MetaRow label={t("File")} value={app.fileName} />
+        {apkMeta?.packageName && (
+          <>
+            <MetaRow label={t("Package")} value={String(apkMeta.packageName)} mono />
+            <MetaRow label={t("Version")} value={`${apkMeta.versionName || "?"} (${apkMeta.versionCode || "?"})`} />
+            <MetaRow label={t("Android SDK")} value={`${apkMeta.minSdk || "?"} – ${apkMeta.targetSdk || "?"}`} />
+            <MetaRow label={t("Signing")} value={String(apkMeta.signing || "—")} />
+          </>
+        )}
         {app.source && (
           <MetaRow
             label={t("Source")}

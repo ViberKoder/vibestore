@@ -30,6 +30,7 @@ import { runVirusTotal } from "./virustotal";
 import { runArchiveEngine, runBlocklistEngine } from "./security-engines";
 import { runStaticAuditor } from "./static-audit";
 import { runDependencyEngine } from "./dependencies";
+import { runApkEngine } from "./apk";
 import { sha256Buffer } from "../hash";
 
 function readinessFrom(
@@ -162,6 +163,7 @@ export async function runScanPipeline(opts: {
     { scanners: ["blocklist"], run: async () => [await runBlocklistEngine(sha256Buffer(opts.buffer))] },
     { scanners: ["static-audit"], run: async () => [await runStaticAuditor(opts.buffer, opts.fileName)] },
     { scanners: ["dependencies"], run: async () => [await runDependencyEngine(opts.buffer, opts.fileName)] },
+    { scanners: ["apk"], run: async () => [await runApkEngine(opts.buffer, opts.fileName)] },
   ];
 
   const byScanner = new Map<ScannerId, EngineResult>();
@@ -336,6 +338,11 @@ export function buildCoverage(engines: EngineResult[], kind: string): ScanCovera
   ];
   if (!dependenciesChecked) {
     notVerified.unshift("Dependency vulnerabilities (CVE/OSV): no advisory lookup was completed for this build");
+  }
+  if (kind === "mobile") {
+    notVerified.push("Behaviour on a real phone: permissions are checked as declared, not as used at runtime");
+    notVerified.push("The backend the app talks to: its security and data handling are not checked");
+    notVerified.push("Store policy compliance and accuracy of the privacy labels");
   }
   if (kind === "desktop") notVerified.push("Installer contents (NSIS/MSI) are not unpacked, only the outer file is checked");
   return {

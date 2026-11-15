@@ -107,3 +107,32 @@ means "no blocking findings in the checks listed", and the report says so.
    model already accepts such results as engines.
 4. **Public verification log.** Keep scan history per build hash, so a later
    change in verdict is visible instead of silent.
+
+
+## Mobile packages (APK and AAB)
+
+Implemented in `src/lib/scanners/apk.ts` and `src/lib/apk/`. Packages are read
+without installing anything.
+
+| Check | Where |
+| --- | --- |
+| Binary AndroidManifest.xml decoding (APK and AAB `base/` layout) | `apk/axml.ts` |
+| Permissions by risk, and dangerous combinations (SMS/call/mic/location + network, overlay + accessibility) | `apk/manifest.ts` |
+| Flags: debuggable, testOnly, cleartext, allowBackup, minSdk, targetSdk (store threshold `APK_MIN_TARGET_SDK`, default 35) | `apk/manifest.ts` |
+| Exported components and providers without permission, URI grants | `apk/manifest.ts` |
+| Impersonation of well-known package names | `apk/manifest.ts` |
+| Signing: unsigned, v1 only, v2/v3 present, Android debug key | `apk/signing.ts` |
+| DEX: runtime code loading, shell, SMS, accessibility, screen capture, installers, custom TLS trust, WebView bridge, ECB, packers, secrets and hosts | `apk/dex.ts` |
+| Native libraries that are not ELF, known packer shells | `scanners/apk.ts` |
+| Executables or packages hidden in assets/res/raw | `scanners/apk.ts` |
+
+**Limits, stated in every mobile report:** runtime behaviour on a phone is not
+observed (permissions are checked as declared, not as used); certificate chains
+are not validated (presence and debug name only); split APKs are read only as
+the single file uploaded; obfuscated code is matched by patterns only; iOS IPA
+files are not analysed by this engine; the backend the app talks to is not checked.
+
+**Testing status:** the parser and rules are tested with synthetic packages from
+`scripts/apk-fixtures/gen_apk_fixtures.py`. Compatibility with output from
+`aapt2`/`apksigner` on real builds is not yet verified. Next step: run the
+engine on a corpus of real release APKs once one is provided.
