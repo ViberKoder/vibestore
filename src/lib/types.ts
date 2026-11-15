@@ -27,7 +27,8 @@ export type ScannerId =
   | "http-security"
   | "url-reputation"
   | "static-audit"
-  | "dependencies";
+  | "dependencies"
+  | "apk";
 
 export type ScannerVerdict =
   | "clean"
@@ -246,6 +247,7 @@ export const SCAN_ENGINE_ORDER: Array<{
   { scanner: "blocklist", displayName: "Blocklist" },
   { scanner: "static-audit", displayName: "Static auditor (Stage A)" },
   { scanner: "dependencies", displayName: "Dependency advisories (OSV)" },
+  { scanner: "apk", displayName: "Android package (APK/AAB)" },
 ];
 
 export const PILLAR_META: Array<{

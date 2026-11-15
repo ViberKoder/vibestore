@@ -65,6 +65,7 @@ const EXPECTED: Record<string, SniffedType[]> = {
   ".zip": ["zip"],
   ".jar": ["zip"],
   ".apk": ["zip"],
+  ".aab": ["zip"],
   ".ipa": ["zip"],
   ".appimage": ["elf"],
   ".7z": ["7z"],

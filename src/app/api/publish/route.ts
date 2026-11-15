@@ -48,6 +48,7 @@ const ALLOWED_EXT = new Set([
   ".js",
   ".jar",
   ".apk",
+  ".aab",
   ".ipa",
   ".py",
   ".sh",

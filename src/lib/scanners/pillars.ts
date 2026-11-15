@@ -11,6 +11,7 @@ const PILLAR_ENGINES: Record<keyof AuditPillars, string[]> = {
     "http-security",
     "static-audit",
     "dependencies",
+    "apk",
   ],
   integrity: ["integrity", "entropy", "archive"],
   device: ["device-footprint"],
@@ -42,6 +43,7 @@ function weightedEngineScore(engines: EngineResult[], ids: string[]): number {
     "http-security": 1.1,
     "static-audit": 1.4,
     dependencies: 1.5,
+    apk: 1.6,
   };
   let sum = 0;
   let w = 0;
